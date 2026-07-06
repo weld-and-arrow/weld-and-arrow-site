@@ -5,66 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Weld & Arrow</title>
     <link rel="stylesheet" href="/style.css">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
-    <script src="/app.js" type="module"></script>
+    <script src="/use-your-own.js" type="module"></script>
   </head>
   <body>
-    <noscript>
-      <div class="noscript">This chat requires JavaScript. The privacy notice is available at <a href="/privacy">/privacy</a>.</div>
-    </noscript>
-
     <div class="page-shell">
       <header class="site-header">
         <div>
           <p class="eyebrow">Weld & Arrow</p>
-          <h1>Repository guide</h1>
-        </div>
-        <div class="session-chip hidden" id="sessionChip">
-          <span id="sessionIdText"></span>
-          <span>Quote this ID to request deletion (see privacy notice)</span>
+          <h1>Use your own Claude account</h1>
         </div>
       </header>
 
-      <main class="chat-main" id="chatMain" aria-live="polite">
-        <section class="consent-panel" id="consentPanel">
-          <div class="consent-copy">
-            <p class="eyebrow">Consent required</p>
-            <h2>Conversations on this site are recorded.</h2>
-            <p>
-              Message text, timestamps, session ID, and model usage metadata are stored in the EU for up to
-              12 months. Do not enter personal data. You can request deletion later using your session ID,
-              or by describing the topic and approximate time.
-            </p>
-            <p>
-              Prefer not to be recorded? Use the
-              <a href="#" id="artifactConsentLink" rel="noreferrer">public artifact on your own Claude account</a>
-              instead.
-            </p>
-            <p><a href="/privacy">Privacy notice</a></p>
-          </div>
-          <div class="turnstile-box" id="turnstileBox"></div>
-          <p class="config-warning hidden" id="configWarning"></p>
-          <button class="primary-button" id="consentButton" type="button" disabled>I consent — start</button>
-        </section>
+      <main class="self-serve-main">
+        <p class="self-serve-intro">
+          The hosted chat is paused while the repository context is too large to serve affordably. You can still ask the
+          same repository-grounded questions from your own Claude account: choose the frozen snapshot if you want answers
+          pinned to this site's source commit, or connect the public repo if you want Claude to read live <code>main</code>.
+        </p>
 
-        <section class="messages hidden" id="messages" aria-label="Chat messages"></section>
+        <div class="option-grid">
+          <section class="option-card" aria-labelledby="snapshotTitle">
+            <p class="eyebrow">Frozen snapshot</p>
+            <h2 id="snapshotTitle">Download the snapshot</h2>
+            <p class="snapshot-meta" id="snapshotMeta">
+              Pinned to the frozen source commit this site uses.
+            </p>
+            <ol>
+              <li>Download the text snapshot.</li>
+              <li>Drag it into a Claude chat or add it to a Claude Project.</li>
+              <li>Ask about the Weld & Arrow theory, paper, or Lean repository.</li>
+            </ol>
+            <a class="action-link" href="/context/weld-and-arrow.txt" download>Download snapshot</a>
+          </section>
+
+          <section class="option-card" aria-labelledby="connectorTitle">
+            <p class="eyebrow">Live repository</p>
+            <h2 id="connectorTitle">Connect the repo directly</h2>
+            <p>
+              Use Claude's GitHub connector with
+              <a href="https://github.com/weld-and-arrow/weld-and-arrow" id="repoLink" rel="noreferrer">https://github.com/weld-and-arrow/weld-and-arrow</a>.
+            </p>
+            <ol>
+              <li>Open Claude with the GitHub connector available.</li>
+              <li>Connect the public Weld & Arrow repository.</li>
+              <li>Ask Claude to answer from the connected repo.</li>
+            </ol>
+            <p>
+              Nothing needs to be downloaded. Claude reads live <code>main</code>, so answers may drift from the frozen
+              commit this site is grounded in.
+            </p>
+          </section>
+        </div>
       </main>
 
-      <section class="composer hidden" id="composer">
-        <div class="scope-banner">
-          Ask about the Weld & Arrow theory and its Lean repository only. Anything else — including general
-          Buddhism not specific to this work — is answered "Mu". For unrestricted discussion, open the
-          <a href="#" id="artifactBannerLink" rel="noreferrer">public artifact</a> on your own Claude account.
-        </div>
-        <div class="input-row">
-          <label class="sr-only" for="messageInput">Message</label>
-          <textarea id="messageInput" rows="1" placeholder="Ask about the repository"></textarea>
-          <button class="send-button" id="sendButton" type="button">Send</button>
-        </div>
-      </section>
-
       <footer class="site-footer">
-        <span id="commitText">Grounded in WeldAndArrow @ dev</span>
+        <span>Configured ARTIFACT_URL:</span>
+        <a href="https://claude.ai/" id="artifactLink" rel="noreferrer">configured Claude artifact</a>
         <span aria-hidden="true">·</span>
         <a href="/privacy">Privacy</a>
       </footer>

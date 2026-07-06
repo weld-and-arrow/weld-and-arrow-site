@@ -48,6 +48,7 @@ export interface Env {
   LIMIT_HOUR_USD: string;
   LIMIT_DAY_USD: string;
   LIMIT_WEEK_USD: string;
+  CHAT_ENABLED: string;
   WARM_ENABLED: string;
   WARM_IDLE_CUTOFF_MS: string;
   RETENTION_DAYS: string;

@@ -17,8 +17,8 @@ const els = {
   sendButton: document.querySelector("#sendButton"),
   sessionChip: document.querySelector("#sessionChip"),
   sessionIdText: document.querySelector("#sessionIdText"),
-  artifactConsentLink: document.querySelector("#artifactConsentLink"),
-  artifactBannerLink: document.querySelector("#artifactBannerLink"),
+  selfServeConsentLink: document.querySelector("#selfServeConsentLink"),
+  selfServeBannerLink: document.querySelector("#selfServeBannerLink"),
   commitText: document.querySelector("#commitText")
 };
 
@@ -65,9 +65,9 @@ function isChatMessage(value) {
 }
 
 function setConfigText() {
-  const artifactUrl = state.config.artifactUrl || "#";
-  els.artifactConsentLink.href = artifactUrl;
-  els.artifactBannerLink.href = artifactUrl;
+  const selfServeUrl = state.config.selfServeUrl || "/";
+  els.selfServeConsentLink.href = selfServeUrl;
+  els.selfServeBannerLink.href = selfServeUrl;
   els.commitText.textContent = `Grounded in WeldAndArrow @ ${state.config.commit || "dev"}`;
 }
 
@@ -207,7 +207,7 @@ function handleJsonChatResponse(response, body) {
 
   if (body.limited) {
     const reset = formatReset(body.resetsAt);
-    renderLimitNotice(reset, body.artifactUrl);
+    renderLimitNotice(reset, body.artifactUrl, body.selfServeUrl || state.config.selfServeUrl || "/");
     return;
   }
 
@@ -319,7 +319,7 @@ function renderNotice(text) {
   els.messages.scrollTop = els.messages.scrollHeight;
 }
 
-function renderLimitNotice(reset, artifactUrl) {
+function renderLimitNotice(reset, artifactUrl, selfServeUrl) {
   const node = document.createElement("article");
   node.className = "message assistant notice";
   const label = document.createElement("div");
@@ -332,7 +332,10 @@ function renderLimitNotice(reset, artifactUrl) {
   link.href = artifactUrl;
   link.rel = "noreferrer";
   link.textContent = artifactUrl;
-  body.append(link);
+  const selfServeLink = document.createElement("a");
+  selfServeLink.href = selfServeUrl;
+  selfServeLink.textContent = "take the repo to your own account";
+  body.append(link, " or ", selfServeLink, ".");
   node.append(label, body);
   els.messages.append(node);
   els.messages.scrollTop = els.messages.scrollHeight;

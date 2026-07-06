@@ -49,12 +49,12 @@ jobs:
 
       - name: Build frozen context
         run: |
-          node scripts/build-context.mjs --source source --out src/context.generated.ts | tee context.log
+          node scripts/build-context.mjs --source source --out src/context.generated.ts --repo-url "https://github.com/${{ github.repository_owner }}/weld-and-arrow" | tee context.log
           SOURCE_SHA="$(git -C source rev-parse HEAD)"
           echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
           {
             echo "### WeldAndArrow context"
-            grep -E "SOURCE_COMMIT=|CONTEXT_APPROX_TOKENS=" context.log
+            grep -E "SOURCE_COMMIT=|CONTEXT_APPROX_TOKENS=|CONTEXT_SNAPSHOT=|CONTEXT_SNAPSHOT_BYTES=" context.log
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Typecheck

@@ -10,6 +10,8 @@ import { TranscriptDO } from "./transcripts";
 
 export { BudgetDO, TranscriptDO };
 
+const SELF_SERVE_URL = "/";
+
 const SECURITY_HEADERS: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
@@ -19,10 +21,11 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 function withSecurityHeaders(response: Response): Response {
+  const secured = new Response(response.body, response);
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
-    response.headers.set(key, value);
+    secured.headers.set(key, value);
   }
-  return response;
+  return secured;
 }
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -59,6 +62,15 @@ function intVar(value: string | undefined, fallback: number): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function boolVar(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) return fallback;
+  return value.toLowerCase() === "true";
+}
+
+function chatEnabled(env: Env): boolean {
+  return boolVar(env.CHAT_ENABLED, false);
+}
+
 function enforceSameOrigin(request: Request): Response | null {
   const origin = request.headers.get("origin");
   if (!origin) return null;
@@ -74,9 +86,22 @@ function limitedResponse(result: BudgetCheckResult, env: Env): Response | null {
       limited: true,
       scope: result.scope,
       resetsAt: result.resetsAt,
-      artifactUrl: env.ARTIFACT_URL
+      artifactUrl: env.ARTIFACT_URL,
+      selfServeUrl: SELF_SERVE_URL
     },
     { status: 429 }
+  );
+}
+
+function chatDisabledResponse(env: Env): Response {
+  return jsonResponse(
+    {
+      error: "chat_disabled",
+      message: "The hosted chat is currently disabled. Use the self-serve options on the home page instead.",
+      artifactUrl: env.ARTIFACT_URL,
+      selfServeUrl: SELF_SERVE_URL
+    },
+    { status: 503 }
   );
 }
 
@@ -190,6 +215,8 @@ function handleConfig(env: Env): Response {
   return jsonResponse({
     turnstileSiteKey: env.TURNSTILE_SITE_KEY,
     artifactUrl: env.ARTIFACT_URL,
+    selfServeUrl: SELF_SERVE_URL,
+    chatEnabled: chatEnabled(env),
     commit: sourceCommit(env),
     noticeVersion: NOTICE_VERSION,
     maxTurns: intVar(env.MAX_TURNS, 40)
@@ -226,9 +253,9 @@ async function handleAdmin(request: Request, env: Env): Promise<Response> {
   return jsonResponse({ error: "not_found" }, { status: 404 });
 }
 
-async function fetchPrivacy(request: Request, env: Env): Promise<Response> {
+async function fetchAssetPage(request: Request, env: Env, pathname: string): Promise<Response> {
   const url = new URL(request.url);
-  url.pathname = "/privacy.html";
+  url.pathname = pathname;
   return withSecurityHeaders(await env.ASSETS.fetch(new Request(url, request)));
 }
 
@@ -245,10 +272,19 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   }
 
   if (request.method === "GET" && url.pathname === "/api/config") return handleConfig(env);
-  if (request.method === "POST" && url.pathname === "/api/session") return handleSession(request, env);
-  if (request.method === "POST" && url.pathname === "/api/chat") return handleChat(request, env, ctx);
+  if (request.method === "POST" && url.pathname === "/api/session") {
+    if (!chatEnabled(env)) return chatDisabledResponse(env);
+    return handleSession(request, env);
+  }
+  if (request.method === "POST" && url.pathname === "/api/chat") {
+    if (!chatEnabled(env)) return chatDisabledResponse(env);
+    return handleChat(request, env, ctx);
+  }
   if (url.pathname.startsWith("/admin/")) return handleAdmin(request, env);
-  if (request.method === "GET" && url.pathname === "/privacy") return fetchPrivacy(request, env);
+  if (request.method === "GET" && url.pathname === "/privacy") return fetchAssetPage(request, env, "/privacy.html");
+  if (request.method === "GET" && url.pathname === "/use-your-own") {
+    return fetchAssetPage(request, env, "/index.html");
+  }
   if (request.method === "GET" || request.method === "HEAD") return fetchStatic(request, env);
 
   return textResponse("Method not allowed", { status: 405 });
@@ -262,6 +298,11 @@ async function runScheduled(event: ScheduledEvent, env: Env): Promise<void> {
       budgetStub(env).cleanup()
     ]);
     console.log("retention complete", { purged, budgetCleanup });
+    return;
+  }
+
+  if (!chatEnabled(env)) {
+    console.log("warm skip: chat disabled");
     return;
   }
 

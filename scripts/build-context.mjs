@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_MAX_TOKENS = 180000;
 
 function usage() {
-  console.error("Usage: node scripts/build-context.mjs --source <path> --out src/context.generated.ts [--max-tokens 180000]");
+  console.error(
+    "Usage: node scripts/build-context.mjs --source <path> --out src/context.generated.ts [--max-tokens 180000] [--repo-url https://github.com/OWNER/weld-and-arrow]"
+  );
   process.exit(2);
 }
 
@@ -18,10 +20,55 @@ function parseArgs(argv) {
     if (arg === "--source") args.source = argv[++i];
     else if (arg === "--out") args.out = argv[++i];
     else if (arg === "--max-tokens") args.maxTokens = Number(argv[++i]);
+    else if (arg === "--repo-url") args.repoUrl = argv[++i];
     else usage();
   }
   if (!args.source || !args.out || !Number.isFinite(args.maxTokens)) usage();
   return args;
+}
+
+function stripGitSuffix(value) {
+  return value.endsWith(".git") ? value.slice(0, -4) : value;
+}
+
+function normalizeRepoUrl(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const ssh = trimmed.match(/^git@github\.com:([^/]+)\/(.+?)(?:\.git)?$/);
+  if (ssh) return `https://github.com/${ssh[1]}/${stripGitSuffix(ssh[2])}`;
+
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname === "github.com") {
+      url.username = "";
+      url.password = "";
+    }
+    url.search = "";
+    url.hash = "";
+    return stripGitSuffix(url.toString().replace(/\/$/, ""));
+  } catch {
+    return stripGitSuffix(trimmed);
+  }
+}
+
+function inferRepoUrl(sourcePath, explicitUrl) {
+  if (explicitUrl) return normalizeRepoUrl(explicitUrl);
+
+  try {
+    const remoteUrl = execFileSync("git", ["-C", sourcePath, "remote", "get-url", "origin"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"]
+    }).trim();
+    const normalized = normalizeRepoUrl(remoteUrl);
+    if (normalized) return normalized;
+  } catch {
+    // Fall through to the CI owner convention or project default.
+  }
+
+  const owner = process.env.GITHUB_REPOSITORY_OWNER;
+  if (owner) return `https://github.com/${owner}/weld-and-arrow`;
+  return "https://github.com/weld-and-arrow/weld-and-arrow";
 }
 
 function walk(dir, root, out) {
@@ -54,7 +101,9 @@ function collectFiles(source) {
   return files;
 }
 
-const { source, out, maxTokens } = parseArgs(process.argv.slice(2));
+const { source, out, maxTokens, repoUrl: repoUrlArg } = parseArgs(process.argv.slice(2));
+const scriptPath = fileURLToPath(import.meta.url);
+const projectRoot = path.dirname(path.dirname(scriptPath));
 const sourcePath = path.resolve(source);
 if (!existsSync(sourcePath) || !statSync(sourcePath).isDirectory()) {
   throw new Error(`Source checkout does not exist or is not a directory: ${sourcePath}`);
@@ -80,6 +129,8 @@ if (approxTokens > maxTokens) {
 const commit = execFileSync("git", ["-C", sourcePath, "rev-parse", "--short", "HEAD"], {
   encoding: "utf8"
 }).trim();
+const repoUrl = inferRepoUrl(sourcePath, repoUrlArg);
+const builtAt = new Date().toISOString();
 
 const outPath = path.resolve(out);
 const moduleText = [
@@ -92,7 +143,38 @@ const moduleText = [
 
 writeFileSync(outPath, moduleText, "utf8");
 
-const relativeOut = path.relative(path.dirname(fileURLToPath(import.meta.url)), outPath).replaceAll(path.sep, "/");
+const snapshotHeader = [
+  "Weld & Arrow context snapshot",
+  `Source commit: ${commit}`,
+  `Built at: ${builtAt}`,
+  `Frozen snapshot of ${repoUrl}.`,
+  "",
+  "Files:",
+  ...files.map((rel) => `- ${rel}`),
+  "",
+  "===== CONTEXT =====",
+  ""
+].join("\n");
+const snapshotText = `${snapshotHeader}${context}\n`;
+const contextDir = path.join(projectRoot, "public", "context");
+mkdirSync(contextDir, { recursive: true });
+
+const snapshotPath = path.join(contextDir, "weld-and-arrow.txt");
+const manifestPath = path.join(contextDir, "manifest.json");
+const snapshotBytes = Buffer.byteLength(snapshotText, "utf8");
+writeFileSync(snapshotPath, snapshotText, "utf8");
+writeFileSync(
+  manifestPath,
+  `${JSON.stringify({ commit, builtAt, bytes: snapshotBytes, approxTokens, repoUrl }, null, 2)}\n`,
+  "utf8"
+);
+
+const relativeOut = path.relative(path.dirname(scriptPath), outPath).replaceAll(path.sep, "/");
+const relativeSnapshot = path.relative(path.dirname(scriptPath), snapshotPath).replaceAll(path.sep, "/");
+const relativeManifest = path.relative(path.dirname(scriptPath), manifestPath).replaceAll(path.sep, "/");
 console.log(`WeldAndArrow context written to ${relativeOut}`);
 console.log(`SOURCE_COMMIT=${commit}`);
 console.log(`CONTEXT_APPROX_TOKENS=${approxTokens}`);
+console.log(`CONTEXT_SNAPSHOT=${relativeSnapshot}`);
+console.log(`CONTEXT_SNAPSHOT_BYTES=${snapshotBytes}`);
+console.log(`CONTEXT_MANIFEST=${relativeManifest}`);
