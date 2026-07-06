@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      HAS_CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
 
     steps:
       - name: Checkout site
@@ -41,7 +43,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/weld-and-arrow
-          token: ${{ secrets.SOURCE_READ_TOKEN }}
+          token: ${{ secrets.SOURCE_READ_TOKEN || github.token }}
           ref: ${{ github.event.client_payload.sha || 'main' }}
           path: source
 
@@ -59,6 +61,7 @@ jobs:
         run: pnpm run check
 
       - name: Deploy Worker
+        if: ${{ env.HAS_CLOUDFLARE_API_TOKEN == 'true' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: >
@@ -68,3 +71,7 @@ jobs:
           --var PRICE_FABLE_OUTPUT:${PRICE_FABLE_OUTPUT}
           --var PRICE_HAIKU_INPUT:${PRICE_HAIKU_INPUT}
           --var PRICE_HAIKU_OUTPUT:${PRICE_HAIKU_OUTPUT}
+
+      - name: Skip deploy without Cloudflare token
+        if: ${{ env.HAS_CLOUDFLARE_API_TOKEN != 'true' }}
+        run: echo "::warning::CLOUDFLARE_API_TOKEN is not configured; build/typecheck passed, but deployment was skipped."

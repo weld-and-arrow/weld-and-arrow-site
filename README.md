@@ -27,7 +27,9 @@ Objects, and keeps the cached repository context warm while the site is active.
 
 The deploy workflow fetches the current Claude pricing table, builds
 `src/context.generated.ts` from the `WeldAndArrow` source checkout, typechecks,
-and deploys with the source commit hash injected as `COMMIT_HASH`.
+and deploys with the source commit hash injected as `COMMIT_HASH`. Until
+`CLOUDFLARE_API_TOKEN` is configured, the workflow warns and skips only the
+final deploy step.
 
 ## Source Repo Notification
 
