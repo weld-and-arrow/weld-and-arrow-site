@@ -31,7 +31,7 @@ and deploys with the source commit hash injected as `COMMIT_HASH`.
 
 ## Source Repo Notification
 
-Add this workflow to `WeldAndArrow/.github/workflows/notify-site.yml` so pushes
+Add this workflow to `weld-and-arrow/.github/workflows/notify-site.yml` so pushes
 to the source repo redeploy the site with a fresh frozen context:
 
 ```yaml
@@ -48,7 +48,7 @@ jobs:
       - name: Dispatch site rebuild
         env:
           GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
-          SITE_REPO: ${{ github.repository_owner }}/weld-and-arrow-site
+          SITE_REPO: ${{ github.repository_owner }}/website
           SOURCE_SHA: ${{ github.sha }}
         run: |
           gh api "repos/${SITE_REPO}/dispatches" \
@@ -74,7 +74,7 @@ Use status code `301`.
 
 ```sh
 pnpm install
-node scripts/build-context.mjs --source ../WeldAndArrow --out src/context.generated.ts
+node scripts/build-context.mjs --source ../weld-and-arrow --out src/context.generated.ts
 pnpm run check
 ```
 

@@ -40,7 +40,7 @@ jobs:
       - name: Checkout WeldAndArrow source
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository_owner }}/WeldAndArrow
+          repository: ${{ github.repository_owner }}/weld-and-arrow
           token: ${{ secrets.SOURCE_READ_TOKEN }}
           ref: ${{ github.event.client_payload.sha || 'main' }}
           path: source
