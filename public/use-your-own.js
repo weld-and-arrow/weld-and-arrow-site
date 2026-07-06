@@ -1,11 +1,12 @@
 const snapshotMeta = document.querySelector("#snapshotMeta");
 const repoLink = document.querySelector("#repoLink");
 const artifactLink = document.querySelector("#artifactLink");
+const expositionContent = document.querySelector("#expositionContent");
 
 init();
 
 async function init() {
-  const results = await Promise.allSettled([loadManifest(), loadConfig()]);
+  const results = await Promise.allSettled([loadManifest(), loadConfig(), loadExposition()]);
   for (const result of results) {
     if (result.status === "rejected") console.warn(result.reason);
   }
@@ -43,6 +44,23 @@ async function loadConfig() {
   if (artifactLink && typeof config.artifactUrl === "string" && config.artifactUrl.trim()) {
     artifactLink.href = config.artifactUrl;
     artifactLink.textContent = config.artifactUrl;
+  }
+}
+
+async function loadExposition() {
+  if (!expositionContent) return;
+
+  try {
+    const response = await fetch("/context/exposition.html", { cache: "no-store" });
+    if (!response.ok) throw new Error("Exposition HTML could not be loaded.");
+
+    const html = await response.text();
+    expositionContent.innerHTML = html.trim()
+      ? html
+      : '<p class="markdown-status">Exposition is empty for this build.</p>';
+  } catch (error) {
+    expositionContent.innerHTML = '<p class="markdown-status">Exposition is unavailable for this build.</p>';
+    throw error;
   }
 }
 

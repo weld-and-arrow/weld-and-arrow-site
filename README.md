@@ -84,7 +84,8 @@ pnpm run check
 
 `src/context.generated.ts` is intentionally ignored because every deploy freezes
 the current source checkout. The same build also writes
-`public/context/weld-and-arrow.txt` and `public/context/manifest.json`; the
+`public/context/weld-and-arrow.txt`, `public/context/exposition.md`,
+`public/context/exposition.html`, and `public/context/manifest.json`; the
 directory is ignored because those files are generated from the source checkout.
 
 ## Self-Serve Use
@@ -95,6 +96,8 @@ an alias for older links.
 - Download the snapshot at `/context/weld-and-arrow.txt` and drag it into a
   Claude chat or Project. This keeps answers pinned to the exact frozen commit
   used by the deployed site.
+- Read the rendered Exposition Markdown from the source repository directly on
+  the home page.
 - Connect Claude's GitHub connector to the public source repository. This avoids
   downloading a file, but Claude reads live `main`, so answers can drift from the
   frozen site context.
@@ -129,14 +132,17 @@ approximate time window.
 
 - `/` should show the self-serve snapshot and GitHub connector choices without
   loading Turnstile or `public/app.js`.
+- `/` should render every Markdown file under the source repository's
+  `Exposition/` directory beneath the self-serve choices.
 - `/use-your-own` should serve the same home page.
 - With default `CHAT_ENABLED=false`, `POST /api/session` and `POST /api/chat`
   should return `503` with `error: "chat_disabled"`.
 - With default `CHAT_ENABLED=false`, the warm cron should skip cache warming.
 - Admin search/delete and daily retention purge should remove matching sessions.
 - After a local context build, `/context/weld-and-arrow.txt` should exist and
-  `public/context/manifest.json`'s `commit` should equal `SOURCE_COMMIT` in
-  `src/context.generated.ts`.
+  `public/context/exposition.html` should contain the rendered Exposition
+  Markdown. `public/context/manifest.json`'s `commit` should equal
+  `SOURCE_COMMIT` in `src/context.generated.ts`.
 
 When `CHAT_ENABLED=true`, the older hosted-chat checks apply: general Buddhism
 must return literal `Mu` after the Haiku gate; mixed prompts must answer only the
