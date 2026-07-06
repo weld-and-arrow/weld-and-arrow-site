@@ -21,7 +21,7 @@ new_sqlite_classes = ["BudgetDO", "TranscriptDO"]
 
 [[kv_namespaces]]
 binding = "STATE"
-id = "REPLACE_WITH_STATE_KV_NAMESPACE_ID"
+id = "59cb11086c8d48569e5732f6e6eb9e97"
 
 [triggers]
 crons = ["*/45 * * * *", "0 3 * * *"]
@@ -39,6 +39,6 @@ WARM_IDLE_CUTOFF_MS = "7200000"
 RETENTION_DAYS = "365"
 ARTIFACT_URL = "https://claude.ai/"
 COMMIT_HASH = "dev"
-TURNSTILE_SITE_KEY = ""
+TURNSTILE_SITE_KEY = "0x4AAAAAADw3ZNuT1s_WjRG6"
 MAX_TOKENS_FABLE = "2048"
 MAX_TURNS = "40"
