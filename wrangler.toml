@@ -1,0 +1,44 @@
+"$schema" = "./node_modules/wrangler/config-schema.json"
+name = "weld-and-arrow"
+main = "src/index.ts"
+compatibility_date = "2026-07-06"
+
+[assets]
+directory = "./public/"
+binding = "ASSETS"
+
+[[durable_objects.bindings]]
+name = "BUDGET"
+class_name = "BudgetDO"
+
+[[durable_objects.bindings]]
+name = "TRANSCRIPTS"
+class_name = "TranscriptDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BudgetDO", "TranscriptDO"]
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_STATE_KV_NAMESPACE_ID"
+
+[triggers]
+crons = ["*/45 * * * *", "0 3 * * *"]
+
+[vars]
+PRICE_FABLE_INPUT = "10"
+PRICE_FABLE_OUTPUT = "50"
+PRICE_HAIKU_INPUT = "1"
+PRICE_HAIKU_OUTPUT = "5"
+LIMIT_HOUR_USD = "1.28"
+LIMIT_DAY_USD = "4.45"
+LIMIT_WEEK_USD = "12.80"
+WARM_ENABLED = "true"
+WARM_IDLE_CUTOFF_MS = "7200000"
+RETENTION_DAYS = "365"
+ARTIFACT_URL = "https://claude.ai/"
+COMMIT_HASH = "dev"
+TURNSTILE_SITE_KEY = ""
+MAX_TOKENS_FABLE = "2048"
+MAX_TURNS = "40"

@@ -1,2 +1,7 @@
 .vscode/
 .agents/
+node_modules/
+.wrangler/
+.dev.vars
+dist/
+src/context.generated.ts

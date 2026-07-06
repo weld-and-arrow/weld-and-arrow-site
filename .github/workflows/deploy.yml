@@ -1,0 +1,70 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [source-push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch current Claude prices
+        run: |
+          node scripts/fetch-pricing.mjs --github-env | tee pricing.log
+          {
+            echo "### Claude pricing"
+            cat pricing.log
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout WeldAndArrow source
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/WeldAndArrow
+          token: ${{ secrets.SOURCE_READ_TOKEN }}
+          ref: ${{ github.event.client_payload.sha || 'main' }}
+          path: source
+
+      - name: Build frozen context
+        run: |
+          node scripts/build-context.mjs --source source --out src/context.generated.ts | tee context.log
+          SOURCE_SHA="$(git -C source rev-parse HEAD)"
+          echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
+          {
+            echo "### WeldAndArrow context"
+            grep -E "SOURCE_COMMIT=|CONTEXT_APPROX_TOKENS=" context.log
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Typecheck
+        run: pnpm run check
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: >
+          pnpm exec wrangler deploy
+          --var COMMIT_HASH:${SOURCE_SHA}
+          --var PRICE_FABLE_INPUT:${PRICE_FABLE_INPUT}
+          --var PRICE_FABLE_OUTPUT:${PRICE_FABLE_OUTPUT}
+          --var PRICE_HAIKU_INPUT:${PRICE_HAIKU_INPUT}
+          --var PRICE_HAIKU_OUTPUT:${PRICE_HAIKU_OUTPUT}

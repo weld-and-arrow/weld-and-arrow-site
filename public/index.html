@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Weld & Arrow</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <script src="/app.js" type="module"></script>
+  </head>
+  <body>
+    <noscript>
+      <div class="noscript">This chat requires JavaScript. The privacy notice is available at <a href="/privacy">/privacy</a>.</div>
+    </noscript>
+
+    <div class="page-shell">
+      <header class="site-header">
+        <div>
+          <p class="eyebrow">Weld & Arrow</p>
+          <h1>Repository guide</h1>
+        </div>
+        <div class="session-chip hidden" id="sessionChip">
+          <span id="sessionIdText"></span>
+          <span>Quote this ID to request deletion (see privacy notice)</span>
+        </div>
+      </header>
+
+      <main class="chat-main" id="chatMain" aria-live="polite">
+        <section class="consent-panel" id="consentPanel">
+          <div class="consent-copy">
+            <p class="eyebrow">Consent required</p>
+            <h2>Conversations on this site are recorded.</h2>
+            <p>
+              Message text, timestamps, session ID, and model usage metadata are stored in the EU for up to
+              12 months. Do not enter personal data. You can request deletion later using your session ID,
+              or by describing the topic and approximate time.
+            </p>
+            <p>
+              Prefer not to be recorded? Use the
+              <a href="#" id="artifactConsentLink" rel="noreferrer">public artifact on your own Claude account</a>
+              instead.
+            </p>
+            <p><a href="/privacy">Privacy notice</a></p>
+          </div>
+          <div class="turnstile-box" id="turnstileBox"></div>
+          <p class="config-warning hidden" id="configWarning"></p>
+          <button class="primary-button" id="consentButton" type="button" disabled>I consent — start</button>
+        </section>
+
+        <section class="messages hidden" id="messages" aria-label="Chat messages"></section>
+      </main>
+
+      <section class="composer hidden" id="composer">
+        <div class="scope-banner">
+          Ask about the Weld & Arrow theory and its Lean repository only. Anything else — including general
+          Buddhism not specific to this work — is answered "Mu". For unrestricted discussion, open the
+          <a href="#" id="artifactBannerLink" rel="noreferrer">public artifact</a> on your own Claude account.
+        </div>
+        <div class="input-row">
+          <label class="sr-only" for="messageInput">Message</label>
+          <textarea id="messageInput" rows="1" placeholder="Ask about the repository"></textarea>
+          <button class="send-button" id="sendButton" type="button">Send</button>
+        </div>
+      </section>
+
+      <footer class="site-footer">
+        <span id="commitText">Grounded in WeldAndArrow @ dev</span>
+        <span aria-hidden="true">·</span>
+        <a href="/privacy">Privacy</a>
+      </footer>
+    </div>
+  </body>
+</html>
