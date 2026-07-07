@@ -660,6 +660,7 @@ pre,
 
 .markdown-body th,
 .markdown-body td {
+  min-width: 12rem;
   padding: 10px 12px;
   border: 1px solid var(--line);
   overflow-wrap: anywhere;
