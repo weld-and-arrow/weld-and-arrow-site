@@ -27,7 +27,7 @@ def task_worktree_to_main():
     if approved:
         run("git status --short")
         run("git add <all changes>")
-        run('git commit -m "<task summary> <terse description of intent and approach>"')
+        run('git commit -m "<task summary>\n\n<terse description of intent and approach>"') # the commit description should include whatever the change itself can't say - motivation, design decisions, etc. from the plan, as well as decisions at implementation time. Basically, any extra info the code itself couldn't state.
     else:
         stop()
 
@@ -80,7 +80,7 @@ def task_worktree_to_main():
 
     run("git push") # Approval of merge-into-main is also automatically an approval for git push to origin iff the final git merge went cleanly.
 
-    # Cleanup only after main verifies cleanly.
+    # Cleanup after main verifies cleanly.
     run("cd <main-worktree>")
     run("git worktree remove <task-worktree-path>")
     run("git branch -d <task-branch>")
