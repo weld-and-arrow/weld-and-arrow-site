@@ -128,8 +128,8 @@ function runLake(source, args, options = {}) {
 }
 
 function generateExpositionMarkdown(source) {
-  const expositionGenerator = path.join(source, "WeldAndArrow", "Gen", "FullExpositionGeneration.lean");
-  if (existsSync(expositionGenerator)) {
+  const fullExpositionGenerator = path.join(source, "WeldAndArrow", "Gen", "FullExpositionGeneration.lean");
+  if (existsSync(fullExpositionGenerator)) {
     runLake(source, ["exe", EXPOSITION_GENERATION_FULL], { stdio: ["ignore", "inherit", "inherit"] });
     return path.join(source, GENERATED_EXPOSITION_ROOT);
   }

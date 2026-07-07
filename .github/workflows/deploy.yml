@@ -56,6 +56,7 @@ jobs:
 
       - name: Build frozen context
         run: |
+          set -o pipefail
           node scripts/build-context.mjs --source source --out src/context.generated.ts --repo-url "https://github.com/${{ github.repository_owner }}/weld-and-arrow" | tee context.log
           SOURCE_SHA="$(git -C source rev-parse HEAD)"
           echo "SOURCE_SHA=$SOURCE_SHA" >> "$GITHUB_ENV"
