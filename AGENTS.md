@@ -27,7 +27,7 @@ def task_worktree_to_main():
     if approved:
         run("git status --short")
         run("git add <all changes>")
-        run('git commit -m "<task summary>\n\n<terse description of intent and approach>"') # the commit description should include whatever the change itself can't say - motivation, design decisions, etc. from the plan, as well as decisions at implementation time. Basically, any extra info the code itself couldn't state.
+        run('git commit -m "<task summary>\n\n<terse description of intent and approach>"') # the commit description should include whatever the change itself can't say - motivation, design decisions, etc. from the plan, as well as decisions at implementation time. Basically, any extra info the code itself couldn't state. Word-wrap text to Linux standard
     else:
         stop()
 
