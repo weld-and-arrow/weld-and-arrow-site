@@ -676,15 +676,17 @@ pre,
 .markdown-table-scroll table {
   width: max-content;
   min-width: 100%;
-  max-width: none;
+  max-width: var(--table-max-width);
   margin: 0;
 }
 
 .markdown-body th,
 .markdown-body td {
+  min-width: 10rem;
+  max-width: 24rem;
   padding: 10px 12px;
   border: 1px solid var(--line);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   text-align: left;
   vertical-align: top;
   word-break: normal;
