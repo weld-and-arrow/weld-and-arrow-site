@@ -350,7 +350,7 @@ pre,
 .exposition-reader {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: clamp(24px, 4vw, 52px);
+  gap: clamp(6px, 1vw, 12px);
   align-items: start;
 }
 
@@ -644,7 +644,8 @@ pre,
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  overflow-wrap: normal;
+  table-layout: auto;
+  overflow-wrap: anywhere;
 }
 
 .markdown-table-scroll {
@@ -653,8 +654,7 @@ pre,
 }
 
 .markdown-table-scroll table {
-  width: max-content;
-  min-width: max(100%, 44rem);
+  width: 100%;
   margin: 0;
 }
 
@@ -662,7 +662,7 @@ pre,
 .markdown-body td {
   padding: 10px 12px;
   border: 1px solid var(--line);
-  overflow-wrap: normal;
+  overflow-wrap: anywhere;
   text-align: left;
   vertical-align: top;
   word-break: normal;
