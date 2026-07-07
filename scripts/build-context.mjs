@@ -395,7 +395,7 @@ function readGeneratedMarkdown(root, rel) {
   return readFileSync(path.join(root, rel), "utf8")
     .replace(/\r\n/g, "\n")
     .split("\n")
-    .filter((line) => !/\bGENERATED\b/i.test(line))
+    .filter((line) => !/\bGENERATED\b/.test(line))
     .join("\n");
 }
 
