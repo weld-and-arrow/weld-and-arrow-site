@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_MAX_TOKENS = 600000;
 const EXPOSITION_DIR = "Exposition";
 const EXPOSITION_THEORY_PATH = "Exposition/Theory.md";
-const GENERATED_EXPOSITION_ROOT = ".lake/exposition-test";
-const EXPOSITION_GENERATION_TEST = "exposition_generation_test";
+const GENERATED_EXPOSITION_ROOT = ".lake/exposition-full";
+const EXPOSITION_GENERATION_FULL = "exposition_generation_full";
 const EXPOSITION_GENERATOR = "exposition_gen";
 const ASSUMPTIONS_GENERATOR = "assumptions_gen";
 const LEGACY_THEORY_PATH = "Original-Paper/Theory.md";
@@ -128,9 +128,9 @@ function runLake(source, args, options = {}) {
 }
 
 function generateExpositionMarkdown(source) {
-  const testGenerator = path.join(source, "WeldAndArrow", "Gen", "TestExpositionGeneration.lean");
-  if (existsSync(testGenerator)) {
-    runLake(source, ["exe", EXPOSITION_GENERATION_TEST], { stdio: ["ignore", "inherit", "inherit"] });
+  const expositionGenerator = path.join(source, "WeldAndArrow", "Gen", "FullExpositionGeneration.lean");
+  if (existsSync(expositionGenerator)) {
+    runLake(source, ["exe", EXPOSITION_GENERATION_FULL], { stdio: ["ignore", "inherit", "inherit"] });
     return path.join(source, GENERATED_EXPOSITION_ROOT);
   }
 
