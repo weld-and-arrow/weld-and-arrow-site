@@ -649,7 +649,12 @@ pre,
 }
 
 .markdown-table-scroll {
-  max-width: 100%;
+  --table-edge-bleed: 20px;
+  position: relative;
+  z-index: 1;
+  max-width: calc(100% + var(--table-edge-bleed));
+  margin-right: calc(-1 * var(--table-edge-bleed));
+  padding-right: 1px;
   overflow-x: auto;
 }
 
@@ -1025,5 +1030,9 @@ textarea::placeholder {
   .markdown-body {
     padding-left: 18px;
     font-size: 1rem;
+  }
+
+  .markdown-table-scroll {
+    --table-edge-bleed: 12px;
   }
 }
