@@ -27,7 +27,7 @@ def task_worktree_to_main():
     if approved:
         run("git status --short")
         run("git add <all changes>")
-        run('git commit -m "<task summary>"')
+        run('git commit -m "<task summary> <terse description of intent and approach>"')
     else:
         stop()
 
@@ -38,9 +38,8 @@ def task_worktree_to_main():
 
         run("git rebase main")
 
-        # If rebase conflicts:
         # - resolve textual conflicts
-        # - keep the task's intended semantics unless main changed the relevant convention
+        # - keep the task's intended semantics unless main has changed the relevant conventio. Feel free to git blame and review the commit message and commit diff for the new main commits.
         # - run `git add <resolved files>`
         # - run `git rebase --continue`
         # - repeat until rebase completes
