@@ -130,34 +130,100 @@ function buildToc(headings) {
     return;
   }
 
-  for (const heading of headings) {
-    const item = document.createElement("li");
-    item.className = `toc-depth-${headingLevel(heading)}`;
-
-    const link = document.createElement("a");
-    link.href = `#${heading.id}`;
-    link.dataset.targetId = heading.id;
-    link.addEventListener("click", () => setActiveToc(heading.id));
-
-    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    arrow.setAttribute("class", "toc-arrow");
-    arrow.setAttribute("viewBox", "0 0 10 10");
-    arrow.setAttribute("aria-hidden", "true");
-
-    const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    arrowPath.setAttribute("d", "M2 1 L8 5 L2 9 Z");
-    arrowPath.setAttribute("fill", "currentColor");
-    arrow.append(arrowPath);
-
-    const label = document.createElement("span");
-    label.textContent = cleanHeadingLabel(heading);
-
-    link.append(arrow, label);
-    item.append(link);
-    expositionTocList.append(item);
-  }
+  const tree = buildHeadingTree(headings);
+  for (const node of tree) expositionTocList.append(renderTocNode(node));
 
   setActiveToc(headings[0].id);
+}
+
+function buildHeadingTree(headings) {
+  const root = [];
+  const stack = [];
+
+  for (const heading of headings) {
+    const node = { heading, children: [] };
+    const level = headingLevel(heading);
+
+    while (stack.length > 0 && stack[stack.length - 1].level >= level) stack.pop();
+
+    if (stack.length === 0) root.push(node);
+    else stack[stack.length - 1].node.children.push(node);
+
+    stack.push({ level, node });
+  }
+
+  return root;
+}
+
+function renderTocNode(node) {
+  const item = document.createElement("li");
+  const level = headingLevel(node.heading);
+  const hasChildren = node.children.length > 0;
+  item.className = `toc-depth-${level}`;
+  if (hasChildren) item.classList.add("toc-has-children");
+
+  const row = document.createElement("div");
+  row.className = "toc-row";
+
+  if (hasChildren) {
+    const childListId = `${node.heading.id}-toc-children`;
+    const toggle = document.createElement("button");
+    toggle.className = "toc-toggle";
+    toggle.type = "button";
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.setAttribute("aria-controls", childListId);
+    toggle.setAttribute("aria-label", `Collapse ${cleanHeadingLabel(node.heading)}`);
+    toggle.addEventListener("click", () => toggleTocChildren(item, toggle, node.heading));
+    row.append(toggle);
+  } else {
+    const spacer = document.createElement("span");
+    spacer.className = "toc-toggle-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    row.append(spacer);
+  }
+
+  row.append(createTocLink(node.heading));
+  item.append(row);
+
+  if (hasChildren) {
+    const childList = document.createElement("ol");
+    childList.className = "toc-list toc-child-list";
+    childList.id = `${node.heading.id}-toc-children`;
+    for (const child of node.children) childList.append(renderTocNode(child));
+    item.append(childList);
+  }
+
+  return item;
+}
+
+function createTocLink(heading) {
+  const link = document.createElement("a");
+  link.href = `#${heading.id}`;
+  link.dataset.targetId = heading.id;
+  link.addEventListener("click", () => setActiveToc(heading.id));
+
+  const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  arrow.setAttribute("class", "toc-arrow");
+  arrow.setAttribute("viewBox", "0 0 10 10");
+  arrow.setAttribute("aria-hidden", "true");
+
+  const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  arrowPath.setAttribute("d", "M2 1 L8 5 L2 9 Z");
+  arrowPath.setAttribute("fill", "currentColor");
+  arrow.append(arrowPath);
+
+  const label = document.createElement("span");
+  label.textContent = cleanHeadingLabel(heading);
+
+  link.append(arrow, label);
+  return link;
+}
+
+function toggleTocChildren(item, toggle, heading) {
+  const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+  toggle.setAttribute("aria-expanded", String(!isExpanded));
+  toggle.setAttribute("aria-label", `${isExpanded ? "Expand" : "Collapse"} ${cleanHeadingLabel(heading)}`);
+  item.classList.toggle("toc-collapsed", isExpanded);
 }
 
 function setupScrollSpy(headings) {
@@ -191,6 +257,37 @@ function setActiveToc(id) {
   for (const link of expositionTocList.querySelectorAll("a")) {
     link.classList.toggle("active", link.dataset.targetId === id);
   }
+
+  const activeLink = expositionTocList.querySelector(`a[data-target-id="${escapeAttributeSelector(id)}"]`);
+  if (!activeLink) return;
+
+  for (const collapsed of tocAncestors(activeLink, "li.toc-collapsed")) setTocExpanded(collapsed, true);
+}
+
+function setTocExpanded(item, expanded) {
+  item.classList.toggle("toc-collapsed", !expanded);
+  const toggle = item.querySelector(":scope > .toc-row > .toc-toggle");
+  const link = item.querySelector(":scope > .toc-row > a");
+  if (!toggle || !link) return;
+  toggle.setAttribute("aria-expanded", String(expanded));
+  toggle.setAttribute("aria-label", `${expanded ? "Collapse" : "Expand"} ${link.textContent.trim() || "section"}`);
+}
+
+function tocAncestors(element, selector) {
+  const matches = [];
+  let parent = element.parentElement;
+
+  while (parent && parent !== expositionTocList) {
+    if (parent.matches(selector)) matches.push(parent);
+    parent = parent.parentElement;
+  }
+
+  return matches;
+}
+
+function escapeAttributeSelector(value) {
+  if (window.CSS?.escape) return CSS.escape(value);
+  return value.replace(/["\\]/g, "\\$&");
 }
 
 function wireCopyButton() {
