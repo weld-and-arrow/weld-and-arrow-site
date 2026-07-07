@@ -655,19 +655,19 @@ pre,
 
 .markdown-body table {
   width: 100%;
+  max-width: 68rem;
   border-collapse: collapse;
   table-layout: auto;
   overflow-wrap: anywhere;
 }
 
 .markdown-table-scroll {
-  --table-edge-bleed: 20px;
+  --table-max-width: 68rem;
   position: relative;
   z-index: 1;
-  width: calc(100% + var(--table-edge-bleed));
-  max-width: calc(100% + var(--table-edge-bleed));
+  width: min(100%, var(--table-max-width));
+  max-width: 100%;
   min-width: 0;
-  margin-right: calc(-1 * var(--table-edge-bleed));
   padding-right: 1px;
   overflow-x: auto;
   padding-bottom: 4px;
@@ -676,13 +676,14 @@ pre,
 .markdown-table-scroll table {
   width: max-content;
   min-width: 100%;
-  max-width: none;
+  max-width: var(--table-max-width);
   margin: 0;
 }
 
 .markdown-body th,
 .markdown-body td {
-  min-width: 12rem;
+  min-width: 10rem;
+  max-width: 24rem;
   padding: 10px 12px;
   border: 1px solid var(--line);
   overflow-wrap: anywhere;
@@ -1050,6 +1051,6 @@ textarea::placeholder {
   }
 
   .markdown-table-scroll {
-    --table-edge-bleed: 12px;
+    --table-max-width: 100%;
   }
 }

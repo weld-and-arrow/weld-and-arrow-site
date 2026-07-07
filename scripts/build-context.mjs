@@ -379,7 +379,7 @@ function renderMarkdown(markdown) {
 function renderMarkdownFiles(root, files) {
   return files
     .map((rel) => {
-      const text = readFileSync(path.join(root, rel), "utf8").replace(/\r\n/g, "\n");
+      const text = readGeneratedMarkdown(root, rel);
       const id = `markdown-${slugify(rel)}`;
       return [
         `<section class="markdown-file" id="${id}">`,
@@ -388,6 +388,14 @@ function renderMarkdownFiles(root, files) {
         "</section>"
       ].join("\n");
     })
+    .join("\n");
+}
+
+function readGeneratedMarkdown(root, rel) {
+  return readFileSync(path.join(root, rel), "utf8")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line) => !/\bGENERATED\b/i.test(line))
     .join("\n");
 }
 
@@ -464,7 +472,7 @@ const snapshotBytes = Buffer.byteLength(snapshotText, "utf8");
 writeFileSync(snapshotPath, snapshotText, "utf8");
 const expositionText = expositionFiles
   .map((rel) => {
-    const text = readFileSync(path.join(expositionRoot, rel), "utf8").replace(/\r\n/g, "\n");
+    const text = readGeneratedMarkdown(expositionRoot, rel);
     return `===== FILE: ${rel} =====\n${text}`;
   })
   .join("\n\n");
