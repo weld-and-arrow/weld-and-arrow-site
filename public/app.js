@@ -28,6 +28,10 @@ async function init() {
   try {
     state.config = await fetchJson("/api/config");
     setConfigText();
+    if (state.config.chatEnabled === false) {
+      showConfigWarning("The hosted chat is disabled. Use the self-serve options on the home page instead.");
+      return;
+    }
     await setupTurnstile();
     if (state.sessionId) showChat();
   } catch (error) {

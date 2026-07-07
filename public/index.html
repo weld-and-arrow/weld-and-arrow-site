@@ -3,6 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Weld & Arrow is a Lean 4 formalization and paper on karma, agency, welds, and the arrow."
+    >
+    <meta property="og:title" content="Weld & Arrow">
+    <meta
+      property="og:description"
+      content="A frozen repository snapshot, public repo hand-off, and on-site Exposition reader for the Weld & Arrow formalization."
+    >
     <title>Weld & Arrow</title>
     <link rel="stylesheet" href="/style.css">
     <script src="/use-your-own.js" type="module"></script>
@@ -10,32 +19,46 @@
   <body>
     <div class="page-shell">
       <header class="site-header">
-        <div>
-          <p class="eyebrow">Weld & Arrow</p>
-          <h1>Use your own Claude account</h1>
-        </div>
+        <a class="wordmark" href="/" aria-label="Weld & Arrow home">Weld &amp; Arrow</a>
+        <p class="header-meta">repository guide · commit <span id="commitShort">dev</span></p>
       </header>
+      <div class="seam" aria-hidden="true"></div>
 
       <main class="self-serve-main">
-        <p class="self-serve-intro">
-          The hosted chat is paused while the repository context is too large to serve affordably. You can still ask the
-          same repository-grounded questions from your own Claude account: choose the frozen snapshot if you want answers
-          pinned to this site's source commit, or connect the public repo if you want Claude to read live <code>main</code>.
-        </p>
+        <section class="hero" aria-labelledby="heroTitle">
+          <div class="hero-title">
+            <p class="eyebrow">Lean 4 + paper</p>
+            <h1 id="heroTitle">A formal treatment of karma, agency, welds, and the arrow.</h1>
+          </div>
+          <div class="hero-copy">
+            <p>
+              Weld &amp; Arrow develops a theory of joining, causal direction, and chosen action as a Lean 4
+              formalization with an accompanying Exposition.
+            </p>
+            <p>
+              The site is frozen to a source commit, so the snapshot below gives Claude the same repository context
+              used for this build.
+            </p>
+            <p class="status-copy">
+              The hosted chat is offline while the full repository context is too expensive to serve. Both options
+              below run against your own Claude account.
+            </p>
+          </div>
+        </section>
 
-        <div class="option-grid">
-          <section class="option-card" aria-labelledby="snapshotTitle">
+        <div class="option-grid" aria-label="Use Weld and Arrow with Claude">
+          <section class="option-card snapshot-card" aria-labelledby="snapshotTitle">
             <p class="eyebrow">Frozen snapshot</p>
             <h2 id="snapshotTitle">Download the snapshot</h2>
             <p class="snapshot-meta" id="snapshotMeta">
-              Pinned to the frozen source commit this site uses.
+              commit dev · built for this site · snapshot size pending · token estimate pending
             </p>
             <ol>
               <li>Download the text snapshot.</li>
               <li>Drag it into a Claude chat or add it to a Claude Project.</li>
-              <li>Ask about the Weld & Arrow theory, paper, or Lean repository.</li>
+              <li>Ask about the Weld &amp; Arrow theory, paper, or Lean repository.</li>
             </ol>
-            <a class="action-link" href="/context/weld-and-arrow.txt" download>Download snapshot</a>
+            <a class="action-link primary-action" href="/context/weld-and-arrow.txt" download>Download snapshot</a>
           </section>
 
           <section class="option-card" aria-labelledby="connectorTitle">
@@ -43,16 +66,19 @@
             <h2 id="connectorTitle">Connect the repo directly</h2>
             <p>
               Use Claude's GitHub connector with
-              <a href="https://github.com/weld-and-arrow/weld-and-arrow" id="repoLink" rel="noreferrer">https://github.com/weld-and-arrow/weld-and-arrow</a>
+              <a href="https://github.com/weld-and-arrow/weld-and-arrow" id="repoLink" rel="noreferrer">https://github.com/weld-and-arrow/weld-and-arrow</a>.
             </p>
             <ol>
               <li>Open Claude with the GitHub connector available.</li>
-              <li>Connect the public Weld & Arrow repository.</li>
+              <li>Connect the public Weld &amp; Arrow repository.</li>
               <li>Ask Claude to answer from the connected repo.</li>
             </ol>
-            <p>
-              Nothing needs to be downloaded. Claude reads live <code>main</code>, so answers may drift from the frozen
-              commit this site is grounded in.
+            <div class="copy-row">
+              <button class="action-link secondary-action" id="copyRepoButton" type="button">Copy repo URL</button>
+              <span class="copy-confirmation" id="copyRepoStatus" role="status" aria-live="polite"></span>
+            </div>
+            <p class="drift-note">
+              Claude reads live <code>main</code>, so answers may drift from the frozen commit this site is grounded in.
             </p>
           </section>
         </div>
@@ -65,9 +91,20 @@
             </div>
             <a class="action-link secondary-action" href="/context/exposition.md" download>Download Markdown</a>
           </div>
-          <article class="markdown-body" id="expositionContent" aria-live="polite">
-            <p class="markdown-status">Loading exposition.</p>
-          </article>
+
+          <div class="exposition-reader">
+            <nav class="exposition-toc" id="expositionToc" aria-label="Exposition contents">
+              <details class="toc-details" open>
+                <summary>Contents</summary>
+                <ol class="toc-list" id="expositionTocList">
+                  <li class="toc-placeholder">Loading exposition.</li>
+                </ol>
+              </details>
+            </nav>
+            <article class="markdown-body" id="expositionContent" aria-live="polite">
+              <p class="markdown-status">Loading exposition.</p>
+            </article>
+          </div>
         </section>
       </main>
 

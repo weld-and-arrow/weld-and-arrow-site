@@ -2,10 +2,18 @@ const snapshotMeta = document.querySelector("#snapshotMeta");
 const repoLink = document.querySelector("#repoLink");
 const artifactLink = document.querySelector("#artifactLink");
 const expositionContent = document.querySelector("#expositionContent");
+const expositionTocList = document.querySelector("#expositionTocList");
+const copyRepoButton = document.querySelector("#copyRepoButton");
+const copyRepoStatus = document.querySelector("#copyRepoStatus");
+const commitShort = document.querySelector("#commitShort");
+
+let resetCopyTimer = 0;
+let headingObserver = null;
 
 init();
 
 async function init() {
+  wireCopyButton();
   const results = await Promise.allSettled([loadManifest(), loadConfig(), loadExposition()]);
   for (const result of results) {
     if (result.status === "rejected") console.warn(result.reason);
@@ -28,7 +36,9 @@ async function loadManifest() {
     bytes,
     tokens
   ].filter(Boolean);
-  if (snapshotMeta && details.length > 0) snapshotMeta.textContent = `Pinned to ${details.join(", ")}.`;
+
+  if (snapshotMeta && details.length > 0) snapshotMeta.textContent = details.join(" · ");
+  if (commitShort && commit) commitShort.textContent = shortCommit(commit);
 
   if (repoLink && typeof manifest.repoUrl === "string" && manifest.repoUrl.trim()) {
     repoLink.href = manifest.repoUrl;
@@ -55,13 +65,214 @@ async function loadExposition() {
     if (!response.ok) throw new Error("Exposition HTML could not be loaded.");
 
     const html = await response.text();
-    expositionContent.innerHTML = html.trim()
-      ? html
-      : '<p class="markdown-status">Exposition is empty for this build.</p>';
+    if (html.trim()) {
+      expositionContent.innerHTML = html;
+      prepareExpositionReader();
+    } else {
+      setExpositionStatus("Exposition is empty in this build. The snapshot download still includes the repository context.");
+    }
   } catch (error) {
-    expositionContent.innerHTML = '<p class="markdown-status">Exposition is unavailable for this build.</p>';
+    setExpositionStatus("Exposition is not available in this build. The snapshot download still includes it.");
     throw error;
   }
+}
+
+function prepareExpositionReader() {
+  const headings = Array.from(expositionContent.querySelectorAll("h1, h2, h3"));
+  assignHeadingIds(headings);
+  addHeadingAnchors(headings);
+  buildToc(headings);
+  setupScrollSpy(headings);
+}
+
+function assignHeadingIds(headings) {
+  const used = new Map();
+  for (const heading of headings) {
+    const base = slugify(heading.textContent || "section");
+    const count = used.get(base) || 0;
+    used.set(base, count + 1);
+    heading.id = count === 0 ? base : `${base}-${count + 1}`;
+  }
+}
+
+function addHeadingAnchors(headings) {
+  for (const heading of headings) {
+    const anchor = document.createElement("a");
+    anchor.className = "heading-anchor";
+    anchor.href = `#${heading.id}`;
+    anchor.setAttribute("aria-label", `Link to ${heading.textContent || "section"}`);
+    anchor.textContent = "#";
+    heading.append(" ", anchor);
+  }
+}
+
+function buildToc(headings) {
+  if (!expositionTocList) return;
+  expositionTocList.textContent = "";
+
+  if (headings.length === 0) {
+    const item = document.createElement("li");
+    item.className = "toc-placeholder";
+    item.textContent = "No headings in this exposition.";
+    expositionTocList.append(item);
+    return;
+  }
+
+  for (const heading of headings) {
+    const item = document.createElement("li");
+    item.className = `toc-depth-${headingLevel(heading)}`;
+
+    const link = document.createElement("a");
+    link.href = `#${heading.id}`;
+    link.dataset.targetId = heading.id;
+    link.addEventListener("click", () => setActiveToc(heading.id));
+
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    arrow.setAttribute("class", "toc-arrow");
+    arrow.setAttribute("viewBox", "0 0 10 10");
+    arrow.setAttribute("aria-hidden", "true");
+
+    const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arrowPath.setAttribute("d", "M2 1 L8 5 L2 9 Z");
+    arrowPath.setAttribute("fill", "currentColor");
+    arrow.append(arrowPath);
+
+    const label = document.createElement("span");
+    label.textContent = cleanHeadingLabel(heading);
+
+    link.append(arrow, label);
+    item.append(link);
+    expositionTocList.append(item);
+  }
+
+  setActiveToc(headings[0].id);
+}
+
+function setupScrollSpy(headings) {
+  if (!headings.length) return;
+  if (headingObserver) headingObserver.disconnect();
+
+  if (!("IntersectionObserver" in window)) return;
+
+  const visible = new Set();
+  headingObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) visible.add(entry.target.id);
+        else visible.delete(entry.target.id);
+      }
+
+      const active = headings.filter((heading) => visible.has(heading.id)).pop();
+      if (active) setActiveToc(active.id);
+    },
+    {
+      rootMargin: "0px 0px -40% 0px",
+      threshold: 0
+    }
+  );
+
+  for (const heading of headings) headingObserver.observe(heading);
+}
+
+function setActiveToc(id) {
+  if (!expositionTocList) return;
+  for (const link of expositionTocList.querySelectorAll("a")) {
+    link.classList.toggle("active", link.dataset.targetId === id);
+  }
+}
+
+function wireCopyButton() {
+  if (!copyRepoButton || !repoLink) return;
+  copyRepoButton.addEventListener("click", copyRepoUrl);
+}
+
+async function copyRepoUrl() {
+  const url = repoLink.href || repoLink.textContent || "";
+  if (!url) return;
+
+  try {
+    await navigator.clipboard.writeText(url);
+    showCopyState("Copied", "Copied");
+  } catch {
+    selectRepoUrl();
+    if (copySelectedText()) {
+      showCopyState("Copied", "Copied");
+    } else {
+      showCopyState("Select URL", "Copy the selected URL.");
+    }
+  }
+}
+
+function selectRepoUrl() {
+  const selection = window.getSelection();
+  if (!selection || !repoLink) return;
+  const range = document.createRange();
+  range.selectNodeContents(repoLink);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function copySelectedText() {
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  }
+}
+
+function showCopyState(buttonLabel, statusText) {
+  window.clearTimeout(resetCopyTimer);
+  const originalLabel = copyRepoButton.dataset.label || copyRepoButton.textContent || "Copy repo URL";
+  copyRepoButton.dataset.label = originalLabel;
+  copyRepoButton.textContent = buttonLabel;
+  if (copyRepoStatus) copyRepoStatus.textContent = statusText;
+
+  resetCopyTimer = window.setTimeout(() => {
+    copyRepoButton.textContent = originalLabel;
+    if (copyRepoStatus) copyRepoStatus.textContent = "";
+  }, 2000);
+}
+
+function setExpositionStatus(message) {
+  expositionContent.textContent = "";
+  const status = document.createElement("p");
+  status.className = "markdown-status";
+  status.textContent = message;
+  expositionContent.append(status);
+
+  if (expositionTocList) {
+    expositionTocList.textContent = "";
+    const item = document.createElement("li");
+    item.className = "toc-placeholder";
+    item.textContent = "Exposition unavailable.";
+    expositionTocList.append(item);
+  }
+}
+
+function cleanHeadingLabel(heading) {
+  return Array.from(heading.childNodes)
+    .filter((node) => !(node.nodeType === Node.ELEMENT_NODE && node.classList?.contains("heading-anchor")))
+    .map((node) => node.textContent || "")
+    .join("")
+    .trim();
+}
+
+function headingLevel(heading) {
+  return Number(heading.tagName.slice(1));
+}
+
+function slugify(value) {
+  return (
+    value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "section"
+  );
+}
+
+function shortCommit(value) {
+  return value.length > 12 ? value.slice(0, 12) : value;
 }
 
 function formatDate(value) {
