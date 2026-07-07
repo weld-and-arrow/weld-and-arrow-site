@@ -4,14 +4,14 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DEFAULT_MAX_TOKENS = 180000;
+const DEFAULT_MAX_TOKENS = 600000;
 const EXPOSITION_DIR = "Exposition";
 const EXPOSITION_THEORY_PATH = "Exposition/Theory.md";
 const LEGACY_THEORY_PATH = "Original-Paper/Theory.md";
 
 function usage() {
   console.error(
-    "Usage: node scripts/build-context.mjs --source <path> --out src/context.generated.ts [--max-tokens 180000] [--repo-url https://github.com/OWNER/weld-and-arrow]"
+    "Usage: node scripts/build-context.mjs --source <path> --out src/context.generated.ts [--max-tokens 600000] [--repo-url https://github.com/OWNER/weld-and-arrow]"
   );
   process.exit(2);
 }
