@@ -349,7 +349,7 @@ pre,
 
 .exposition-reader {
   display: grid;
-  grid-template-columns: 240px minmax(0, 72ch);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: clamp(24px, 4vw, 52px);
   align-items: start;
 }
@@ -474,6 +474,10 @@ pre,
   padding-top: 0;
 }
 
+.markdown-file > :not(.markdown-table-scroll) {
+  max-width: 72ch;
+}
+
 .markdown-file-path {
   margin-bottom: 16px;
   color: var(--straw);
@@ -534,6 +538,7 @@ pre,
 .markdown-body blockquote,
 .markdown-body pre,
 .markdown-body table,
+.markdown-table-scroll,
 .markdown-body hr {
   margin: 0 0 1rem;
 }
@@ -581,15 +586,28 @@ pre,
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+}
+
+.markdown-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.markdown-table-scroll table {
+  width: max-content;
+  min-width: max(100%, 44rem);
+  margin: 0;
 }
 
 .markdown-body th,
 .markdown-body td {
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
+  overflow-wrap: normal;
   text-align: left;
   vertical-align: top;
+  word-break: normal;
 }
 
 .markdown-body th {

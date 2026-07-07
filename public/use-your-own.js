@@ -81,8 +81,20 @@ function prepareExpositionReader() {
   const headings = Array.from(expositionContent.querySelectorAll("h1, h2, h3"));
   assignHeadingIds(headings);
   addHeadingAnchors(headings);
+  wrapTables();
   buildToc(headings);
   setupScrollSpy(headings);
+}
+
+function wrapTables() {
+  for (const table of expositionContent.querySelectorAll("table")) {
+    if (table.parentElement?.classList.contains("markdown-table-scroll")) continue;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "markdown-table-scroll";
+    table.replaceWith(wrapper);
+    wrapper.append(table);
+  }
 }
 
 function assignHeadingIds(headings) {
