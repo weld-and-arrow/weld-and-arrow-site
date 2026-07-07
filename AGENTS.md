@@ -78,7 +78,7 @@ def task_worktree_to_main():
 
     run("lake build")
 
-    run("git push") # Approval of merge-into-main is also automatically an approval for git push to origin iff the final git merge went cleanly.
+    run("git push") # Approval of merge-into-main is also automatically an approval for git push to origin iff the final git merge went cleanly, even when unrelated commits will be pushed too.
 
     # Cleanup after main verifies cleanly.
     run("cd <main-worktree>")
