@@ -350,7 +350,7 @@ pre,
 .exposition-reader {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: clamp(6px, 1vw, 12px);
+  gap: 0;
   align-items: start;
 }
 
@@ -360,6 +360,7 @@ pre,
   max-height: calc(100vh - 36px);
   min-width: 0;
   overflow-y: auto;
+  padding-right: clamp(6px, 1vw, 12px);
   scrollbar-gutter: stable;
   color: var(--steel);
 }
@@ -390,6 +391,7 @@ pre,
 
 .toc-child-list {
   gap: 0;
+  padding-left: 18px;
 }
 
 .toc-placeholder {
@@ -408,6 +410,21 @@ pre,
 .toc-toggle-spacer {
   width: 18px;
   min-height: 36px;
+}
+
+.toc-toggle-spacer {
+  display: grid;
+  place-items: center;
+  color: var(--steel);
+}
+
+.toc-toggle-spacer::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.55;
 }
 
 .toc-toggle {
@@ -481,12 +498,7 @@ pre,
   transform: translateX(0);
 }
 
-.toc-depth-2 a {
-  padding-left: 12px;
-}
-
 .toc-depth-3 a {
-  padding-left: 24px;
   font-size: 0.86rem;
 }
 
@@ -652,14 +664,19 @@ pre,
   --table-edge-bleed: 20px;
   position: relative;
   z-index: 1;
+  width: calc(100% + var(--table-edge-bleed));
   max-width: calc(100% + var(--table-edge-bleed));
+  min-width: 0;
   margin-right: calc(-1 * var(--table-edge-bleed));
   padding-right: 1px;
   overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .markdown-table-scroll table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
   margin: 0;
 }
 
