@@ -120,4 +120,4 @@ conflict check:
 - Remove the task worktree before deleting its branch.
 - Use `git -c core.editor=true rebase --continue` so VS Code editor isn't atempted
 - If the user responds "k" or "K", that means they pre-grant approval for every subsequent step of the AGENTS.md workflow, unless unexpected information surfaces, in which case rescinded - pause activity to raise the new information.
-- Don't worry that the task worktree is still present at C:/Users/alicl/.codex/worktrees/ afterwards, it's locked by the process. If you reach that, don't acknowledge it, just print out "DONE".
+- Don't worry that the task worktree is still present at C:/Users/alicl/.codex/worktrees/ afterwards, it's locked by the process. If you reach that, don't acknowledge it, raise anything else that's genuinely important or print "DONE".
