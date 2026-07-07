@@ -27,10 +27,11 @@ so they can use their own Claude account instead.
    - `CLOUDFLARE_API_TOKEN`
    - `SOURCE_READ_TOKEN`
 
-The deploy workflow fetches the current Claude pricing table, builds
-`src/context.generated.ts` from the `WeldAndArrow` source checkout, writes the
-public frozen context bundle, typechecks, and deploys with the source commit hash
-injected as `COMMIT_HASH`. Until `CLOUDFLARE_API_TOKEN` is configured, the
+The deploy workflow fetches the current Claude pricing table, installs Lean for
+the `WeldAndArrow` source checkout, generates the Exposition Markdown through
+the source repo's Lake executables, builds `src/context.generated.ts`, writes
+the public frozen context bundle, typechecks, and deploys with the source commit
+hash injected as `COMMIT_HASH`. Until `CLOUDFLARE_API_TOKEN` is configured, the
 workflow warns and skips only the final deploy step.
 
 ## Source Repo Notification
@@ -82,8 +83,11 @@ node scripts/build-context.mjs --source ../weld-and-arrow --out src/context.gene
 pnpm run check
 ```
 
-`src/context.generated.ts` is intentionally ignored because every deploy freezes
-the current source checkout. The same build also writes
+`node scripts/build-context.mjs` runs `lake exe exposition_generation_test` in
+the source checkout first, then reads the generated Markdown from
+`.lake/exposition-test/Exposition`. `src/context.generated.ts` is intentionally
+ignored because every deploy freezes the current source checkout. The same build
+also writes
 `public/context/weld-and-arrow.txt`, `public/context/exposition.md`,
 `public/context/exposition.html`, and `public/context/manifest.json`; the
 directory is ignored because those files are generated from the source checkout.
@@ -96,7 +100,7 @@ an alias for older links.
 - Download the snapshot at `/context/weld-and-arrow.txt` and drag it into a
   Claude chat or Project. This keeps answers pinned to the exact frozen commit
   used by the deployed site.
-- Read the rendered Exposition Markdown from the source repository directly on
+- Read the rendered Exposition Markdown generated from the source repository on
   the home page.
 - Connect Claude's GitHub connector to the public source repository. This avoids
   downloading a file, but Claude reads live `main`, so answers can drift from the
@@ -132,8 +136,8 @@ approximate time window.
 
 - `/` should show the self-serve snapshot and GitHub connector choices without
   loading Turnstile or `public/app.js`.
-- `/` should render every Markdown file under the source repository's
-  `Exposition/` directory beneath the self-serve choices.
+- `/` should render every generated Markdown file under the source repository's
+  `.lake/exposition-test/Exposition/` directory beneath the self-serve choices.
 - `/use-your-own` should serve the same home page.
 - With default `CHAT_ENABLED=false`, `POST /api/session` and `POST /api/chat`
   should return `503` with `error: "chat_disabled"`.

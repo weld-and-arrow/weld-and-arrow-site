@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_MAX_TOKENS = 600000;
 const EXPOSITION_DIR = "Exposition";
 const EXPOSITION_THEORY_PATH = "Exposition/Theory.md";
+const GENERATED_EXPOSITION_ROOT = ".lake/exposition-test";
+const EXPOSITION_GENERATION_TEST = "exposition_generation_test";
+const EXPOSITION_GENERATOR = "exposition_gen";
+const ASSUMPTIONS_GENERATOR = "assumptions_gen";
 const LEGACY_THEORY_PATH = "Original-Paper/Theory.md";
 
 function usage() {
@@ -101,21 +105,73 @@ function walkMarkdown(dir, root, out) {
   }
 }
 
-function collectExpositionFiles(source) {
+function fileEntry(root, rel) {
+  return { root, rel };
+}
+
+function runLake(source, args, options = {}) {
+  try {
+    return execFileSync("lake", args, {
+      cwd: source,
+      encoding: options.encoding ?? "utf8",
+      stdio: options.stdio ?? ["ignore", "pipe", "inherit"]
+    });
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(
+        "`lake` was not found. Install Lean/Lake or run the build after leanprover/lean-action has set up the source checkout."
+      );
+    }
+    const command = `lake ${args.join(" ")}`;
+    throw new Error(`${command} failed while generating Exposition Markdown.`);
+  }
+}
+
+function generateExpositionMarkdown(source) {
+  const testGenerator = path.join(source, "WeldAndArrow", "Gen", "TestExpositionGeneration.lean");
+  if (existsSync(testGenerator)) {
+    runLake(source, ["exe", EXPOSITION_GENERATION_TEST], { stdio: ["ignore", "inherit", "inherit"] });
+    return path.join(source, GENERATED_EXPOSITION_ROOT);
+  }
+
+  const expositionGenerator = path.join(source, "WeldAndArrow", "Gen", "Exposition.lean");
+  if (existsSync(expositionGenerator)) {
+    runLake(source, ["exe", EXPOSITION_GENERATOR, "--output-dir", GENERATED_EXPOSITION_ROOT], {
+      stdio: ["ignore", "inherit", "inherit"]
+    });
+
+    const assumptionsGenerator = path.join(source, "WeldAndArrow", "Gen", "Assumptions.lean");
+    if (existsSync(assumptionsGenerator)) {
+      const expositionDir = path.join(source, GENERATED_EXPOSITION_ROOT, EXPOSITION_DIR);
+      mkdirSync(expositionDir, { recursive: true });
+      const assumptions = runLake(source, ["exe", ASSUMPTIONS_GENERATOR]);
+      writeFileSync(path.join(expositionDir, "Assumptions.md"), assumptions, "utf8");
+    }
+
+    return path.join(source, GENERATED_EXPOSITION_ROOT);
+  }
+
+  return source;
+}
+
+function collectExpositionFiles(root) {
   const files = [];
-  const expositionRoot = path.join(source, EXPOSITION_DIR);
+  const expositionRoot = path.join(root, EXPOSITION_DIR);
   if (existsSync(expositionRoot) && statSync(expositionRoot).isDirectory()) {
-    walkMarkdown(expositionRoot, source, files);
+    walkMarkdown(expositionRoot, root, files);
   }
   if (files.length > 0) return files.sort((a, b) => b.localeCompare(a));
-  if (existsSync(path.join(source, LEGACY_THEORY_PATH))) return [LEGACY_THEORY_PATH];
   return [];
 }
 
-function findContextTheoryFile(source, expositionFiles) {
-  if (existsSync(path.join(source, EXPOSITION_THEORY_PATH))) return EXPOSITION_THEORY_PATH;
-  if (existsSync(path.join(source, LEGACY_THEORY_PATH))) return LEGACY_THEORY_PATH;
-  return expositionFiles[0] ?? "";
+function findContextTheoryFile(source, expositionRoot, expositionFiles) {
+  if (expositionFiles.includes(EXPOSITION_THEORY_PATH)) {
+    return fileEntry(expositionRoot, EXPOSITION_THEORY_PATH);
+  }
+  if (existsSync(path.join(source, LEGACY_THEORY_PATH))) {
+    return fileEntry(source, LEGACY_THEORY_PATH);
+  }
+  return expositionFiles[0] ? fileEntry(expositionRoot, expositionFiles[0]) : null;
 }
 
 function collectFiles(source, theoryFile) {
@@ -124,10 +180,10 @@ function collectFiles(source, theoryFile) {
 
   const leanFiles = [];
   walk(source, source, leanFiles);
-  files.push(...leanFiles.sort((a, b) => a.localeCompare(b)));
+  files.push(...leanFiles.sort((a, b) => a.localeCompare(b)).map((rel) => fileEntry(source, rel)));
 
   for (const rel of ["lakefile.toml", "LICENSE"]) {
-    if (existsSync(path.join(source, rel))) files.push(rel);
+    if (existsSync(path.join(source, rel))) files.push(fileEntry(source, rel));
   }
   return files;
 }
@@ -320,10 +376,10 @@ function renderMarkdown(markdown) {
   return out.join("\n");
 }
 
-function renderMarkdownFiles(source, files) {
+function renderMarkdownFiles(root, files) {
   return files
     .map((rel) => {
-      const text = readFileSync(path.join(source, rel), "utf8").replace(/\r\n/g, "\n");
+      const text = readFileSync(path.join(root, rel), "utf8").replace(/\r\n/g, "\n");
       const id = `markdown-${slugify(rel)}`;
       return [
         `<section class="markdown-file" id="${id}">`,
@@ -343,20 +399,21 @@ if (!existsSync(sourcePath) || !statSync(sourcePath).isDirectory()) {
   throw new Error(`Source checkout does not exist or is not a directory: ${sourcePath}`);
 }
 
-const expositionFiles = collectExpositionFiles(sourcePath);
+const expositionRoot = generateExpositionMarkdown(sourcePath);
+const expositionFiles = collectExpositionFiles(expositionRoot);
 if (expositionFiles.length === 0) {
-  throw new Error(`Exposition Markdown was not found under ${EXPOSITION_DIR}/`);
+  throw new Error(`Exposition Markdown was not found under ${path.join(expositionRoot, EXPOSITION_DIR)}/`);
 }
 
-const theoryFile = findContextTheoryFile(sourcePath, expositionFiles);
+const theoryFile = findContextTheoryFile(sourcePath, expositionRoot, expositionFiles);
 const files = collectFiles(sourcePath, theoryFile);
 if (files.length === 0) {
   throw new Error(`No context files found in ${sourcePath}`);
 }
 
 const context = files
-  .map((rel) => {
-    const text = readFileSync(path.join(sourcePath, rel), "utf8").replace(/\r\n/g, "\n");
+  .map(({ root, rel }) => {
+    const text = readFileSync(path.join(root, rel), "utf8").replace(/\r\n/g, "\n");
     return `===== FILE: ${rel} =====\n${text}`;
   })
   .join("\n\n");
@@ -390,7 +447,7 @@ const snapshotHeader = [
   `Frozen snapshot of ${repoUrl}.`,
   "",
   "Files:",
-  ...files.map((rel) => `- ${rel}`),
+  ...files.map(({ rel }) => `- ${rel}`),
   "",
   "===== CONTEXT =====",
   ""
@@ -407,12 +464,12 @@ const snapshotBytes = Buffer.byteLength(snapshotText, "utf8");
 writeFileSync(snapshotPath, snapshotText, "utf8");
 const expositionText = expositionFiles
   .map((rel) => {
-    const text = readFileSync(path.join(sourcePath, rel), "utf8").replace(/\r\n/g, "\n");
+    const text = readFileSync(path.join(expositionRoot, rel), "utf8").replace(/\r\n/g, "\n");
     return `===== FILE: ${rel} =====\n${text}`;
   })
   .join("\n\n");
 writeFileSync(expositionPath, expositionText, "utf8");
-writeFileSync(expositionHtmlPath, `${renderMarkdownFiles(sourcePath, expositionFiles)}\n`, "utf8");
+writeFileSync(expositionHtmlPath, `${renderMarkdownFiles(expositionRoot, expositionFiles)}\n`, "utf8");
 writeFileSync(
   manifestPath,
   `${JSON.stringify({ commit, builtAt, bytes: snapshotBytes, approxTokens, repoUrl, expositionPaths: expositionFiles }, null, 2)}\n`,

@@ -47,6 +47,13 @@ jobs:
           ref: ${{ github.event.client_payload.sha || 'main' }}
           path: source
 
+      - name: Setup Lean for source
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: source
+          build: false
+          test: false
+
       - name: Build frozen context
         run: |
           node scripts/build-context.mjs --source source --out src/context.generated.ts --repo-url "https://github.com/${{ github.repository_owner }}/weld-and-arrow" | tee context.log
