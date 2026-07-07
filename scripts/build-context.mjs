@@ -7,6 +7,15 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_MAX_TOKENS = 600000;
 const EXPOSITION_DIR = "Exposition";
 const EXPOSITION_THEORY_PATH = "Exposition/Theory.md";
+const EXPOSITION_READING_ORDER = [
+  "Exposition/index.md",
+  "Exposition/Theory.md",
+  "Exposition/Theorems.md",
+  "Exposition/Identification.md",
+  "Exposition/Formalization.md",
+  "Exposition/Assumptions.md",
+  "Exposition/Glossary.md"
+];
 const GENERATED_EXPOSITION_ROOT = ".lake/exposition-full";
 const EXPOSITION_GENERATION_FULL = "exposition_generation_full";
 const EXPOSITION_GENERATOR = "exposition_gen";
@@ -160,8 +169,20 @@ function collectExpositionFiles(root) {
   if (existsSync(expositionRoot) && statSync(expositionRoot).isDirectory()) {
     walkMarkdown(expositionRoot, root, files);
   }
-  if (files.length > 0) return files.sort((a, b) => b.localeCompare(a));
+  if (files.length > 0) return files.sort(compareExpositionFiles);
   return [];
+}
+
+function expositionOrder(rel) {
+  const normalizedRel = rel.toLowerCase();
+  const index = EXPOSITION_READING_ORDER.findIndex((entry) => entry.toLowerCase() === normalizedRel);
+  return index === -1 ? EXPOSITION_READING_ORDER.length : index;
+}
+
+function compareExpositionFiles(a, b) {
+  const order = expositionOrder(a) - expositionOrder(b);
+  if (order !== 0) return order;
+  return a.localeCompare(b);
 }
 
 function findContextTheoryFile(source, expositionRoot, expositionFiles) {
