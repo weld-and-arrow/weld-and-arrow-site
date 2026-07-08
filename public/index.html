@@ -53,12 +53,39 @@
             <p class="snapshot-meta" id="snapshotMeta">
               commit dev · built for this site · snapshot size pending · token estimate pending
             </p>
+            <fieldset class="snapshot-picker" aria-describedby="snapshotMeta">
+              <legend>Snapshot modules</legend>
+              <label>
+                <input type="checkbox" name="snapshot-module" value="code" checked>
+                <span>Code</span>
+              </label>
+              <label>
+                <input type="checkbox" name="snapshot-module" value="exposition" checked>
+                <span>Exposition</span>
+              </label>
+              <label>
+                <input type="checkbox" name="snapshot-module" value="glossary">
+                <span>Glossary</span>
+              </label>
+              <label>
+                <input type="checkbox" name="snapshot-module" value="formalization">
+                <span>Formalization</span>
+              </label>
+            </fieldset>
             <ol>
               <li>Download the text snapshot.</li>
               <li>Drag it into a Claude chat or add it to a Claude Project.</li>
-              <li>Ask about the Weld &amp; Arrow theory, paper, or Lean repository.</li>
+              <li id="snapshotPromptHint">Ask about the Weld &amp; Arrow theory and code.</li>
             </ol>
-            <a class="action-link primary-action" href="/context/weld-and-arrow.txt" download>Download snapshot</a>
+            <div class="snapshot-actions">
+              <a class="action-link primary-action" href="/context/weld-and-arrow.txt" id="snapshotDownload" download>
+                Download snapshot
+              </a>
+              <button class="action-link secondary-action" id="copySnapshotButton" type="button">
+                Copy to clipboard
+              </button>
+              <span class="copy-confirmation" id="copySnapshotStatus" role="status" aria-live="polite"></span>
+            </div>
           </section>
 
           <section class="option-card" aria-labelledby="connectorTitle">

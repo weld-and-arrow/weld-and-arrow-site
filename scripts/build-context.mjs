@@ -6,21 +6,35 @@ import { fileURLToPath } from "node:url";
 
 const DEFAULT_MAX_TOKENS = 600000;
 const EXPOSITION_DIR = "Exposition";
-const EXPOSITION_THEORY_PATH = "Exposition/Theory.md";
 const EXPOSITION_READING_ORDER = [
   "Exposition/index.md",
   "Exposition/Theory.md",
   "Exposition/Theorems.md",
   "Exposition/Identification.md",
-  "Exposition/Formalization.md",
   "Exposition/Assumptions.md",
-  "Exposition/Glossary.md"
+  "Exposition/Glossary.md",
+  "Exposition/Formalization.md"
 ];
+const SNAPSHOT_MODULES = [
+  { id: "code", label: "Code" },
+  { id: "exposition", label: "Exposition" },
+  { id: "glossary", label: "Glossary" },
+  { id: "formalization", label: "Formalization" }
+];
+const DEFAULT_SNAPSHOT_SELECTION = ["code", "exposition"];
+const CODE_DIRECTORY_ORDER = ["Signature", "Consequences", "Doctrines", "Identification", "Meta", "Gen"];
+const SNAPSHOT_EXPOSITION_ORDER = [
+  "Exposition/Theory.md",
+  "Exposition/Theorems.md",
+  "Exposition/Identification.md",
+  "Exposition/Assumptions.md"
+];
+const SNAPSHOT_GLOSSARY_ORDER = ["Exposition/Glossary.md"];
+const SNAPSHOT_FORMALIZATION_ORDER = ["Exposition/Formalization.md"];
 const GENERATED_EXPOSITION_ROOT = ".lake/exposition-full";
 const EXPOSITION_GENERATION_FULL = "exposition_generation_full";
 const EXPOSITION_GENERATOR = "exposition_gen";
 const ASSUMPTIONS_GENERATOR = "assumptions_gen";
-const LEGACY_THEORY_PATH = "Original-Paper/Theory.md";
 
 function usage() {
   console.error(
@@ -114,8 +128,8 @@ function walkMarkdown(dir, root, out) {
   }
 }
 
-function fileEntry(root, rel) {
-  return { root, rel };
+function moduleFileEntry(root, rel, displayRel = rel) {
+  return { root, rel, displayRel };
 }
 
 function runLake(source, args, options = {}) {
@@ -185,28 +199,118 @@ function compareExpositionFiles(a, b) {
   return a.localeCompare(b);
 }
 
-function findContextTheoryFile(source, expositionRoot, expositionFiles) {
-  if (expositionFiles.includes(EXPOSITION_THEORY_PATH)) {
-    return fileEntry(expositionRoot, EXPOSITION_THEORY_PATH);
-  }
-  if (existsSync(path.join(source, LEGACY_THEORY_PATH))) {
-    return fileEntry(source, LEGACY_THEORY_PATH);
-  }
-  return expositionFiles[0] ? fileEntry(expositionRoot, expositionFiles[0]) : null;
+function isExcludedCodePath(rel) {
+  return rel.startsWith("WeldAndArrow/Exposition/") || rel === "WeldAndArrow/Meta/Glossary.lean";
 }
 
-function collectFiles(source, theoryFile) {
+function codeDirectoryRank(rel) {
+  const parts = rel.split("/");
+  const topLevel = parts[1] ?? "";
+  const index = CODE_DIRECTORY_ORDER.indexOf(topLevel);
+  return index === -1 ? CODE_DIRECTORY_ORDER.length : index;
+}
+
+function compareCodeFiles(a, b) {
+  const rank = codeDirectoryRank(a) - codeDirectoryRank(b);
+  if (rank !== 0) return rank;
+  return a.localeCompare(b);
+}
+
+function collectCodeFiles(source) {
+  const root = path.join(source, "WeldAndArrow");
+  if (!existsSync(root) || !statSync(root).isDirectory()) return [];
+
   const files = [];
-  if (theoryFile) files.push(theoryFile);
+  walk(root, source, files);
+  return files
+    .filter((rel) => !isExcludedCodePath(rel))
+    .sort(compareCodeFiles)
+    .map((rel) => moduleFileEntry(source, rel));
+}
 
-  const leanFiles = [];
-  walk(source, source, leanFiles);
-  files.push(...leanFiles.sort((a, b) => a.localeCompare(b)).map((rel) => fileEntry(source, rel)));
+function collectMarkdownModuleFiles(expositionRoot, expositionFiles, orderedPaths) {
+  const available = new Set(expositionFiles);
+  return orderedPaths
+    .filter((rel) => available.has(rel))
+    .map((rel) => moduleFileEntry(expositionRoot, rel));
+}
 
-  for (const rel of ["lakefile.toml", "LICENSE"]) {
-    if (existsSync(path.join(source, rel))) files.push(fileEntry(source, rel));
-  }
-  return files;
+function buildSnapshotModules(source, expositionRoot, expositionFiles) {
+  return {
+    code: collectCodeFiles(source),
+    exposition: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_EXPOSITION_ORDER),
+    glossary: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_GLOSSARY_ORDER),
+    formalization: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_FORMALIZATION_ORDER)
+  };
+}
+
+function readEntryText(entry) {
+  const text = readFileSync(path.join(entry.root, entry.rel), "utf8").replace(/\r\n/g, "\n");
+  if (!entry.rel.endsWith(".md")) return text;
+  return text
+    .split("\n")
+    .filter((line) => !/\bGENERATED\b/.test(line))
+    .join("\n");
+}
+
+function renderContext(files) {
+  return files
+    .map((entry) => `===== FILE: ${entry.displayRel ?? entry.rel} =====\n${readEntryText(entry)}`)
+    .join("\n\n");
+}
+
+function selectedSnapshotFiles(modules, selectedIds) {
+  return selectedIds.flatMap((id) => modules[id] ?? []);
+}
+
+function snapshotSlug(selectedIds) {
+  return selectedIds.length > 0 ? selectedIds.join("-") : "empty";
+}
+
+function snapshotFileName(selectedIds) {
+  const slug = snapshotSlug(selectedIds);
+  return slug === "code-exposition" ? "weld-and-arrow.txt" : `weld-and-arrow-${slug}.txt`;
+}
+
+function moduleSelectionMask(index) {
+  return SNAPSHOT_MODULES.filter((_module, bit) => (index & (1 << bit)) !== 0).map(({ id }) => id);
+}
+
+function allSnapshotSelections() {
+  const selections = [];
+  const count = 1 << SNAPSHOT_MODULES.length;
+  for (let index = 0; index < count; index += 1) selections.push(moduleSelectionMask(index));
+  return selections;
+}
+
+function snapshotHeader({ commit, builtAt, repoUrl, files, selectedIds }) {
+  const selectedLabels = SNAPSHOT_MODULES.filter(({ id }) => selectedIds.includes(id)).map(({ label }) => label);
+  return [
+    "Weld & Arrow context snapshot",
+    `Source commit: ${commit}`,
+    `Built at: ${builtAt}`,
+    `Frozen snapshot of ${repoUrl}.`,
+    `Selected modules: ${selectedLabels.length > 0 ? selectedLabels.join(", ") : "none"}`,
+    "",
+    "Files:",
+    ...(files.length > 0 ? files.map((entry) => `- ${entry.displayRel ?? entry.rel}`) : ["- none"]),
+    "",
+    "===== CONTEXT =====",
+    ""
+  ].join("\n");
+}
+
+function buildSnapshotText({ commit, builtAt, repoUrl, files, selectedIds }) {
+  const context = renderContext(files);
+  const body = context ? `${context}\n` : "";
+  return `${snapshotHeader({ commit, builtAt, repoUrl, files, selectedIds })}${body}`;
+}
+
+function snapshotStats(text) {
+  return {
+    bytes: Buffer.byteLength(text, "utf8"),
+    approxTokens: Math.ceil(text.length / 3.5)
+  };
 }
 
 function escapeHtml(value) {
@@ -434,18 +538,13 @@ if (expositionFiles.length === 0) {
   throw new Error(`Exposition Markdown was not found under ${path.join(expositionRoot, EXPOSITION_DIR)}/`);
 }
 
-const theoryFile = findContextTheoryFile(sourcePath, expositionRoot, expositionFiles);
-const files = collectFiles(sourcePath, theoryFile);
-if (files.length === 0) {
+const snapshotModules = buildSnapshotModules(sourcePath, expositionRoot, expositionFiles);
+const defaultFiles = selectedSnapshotFiles(snapshotModules, DEFAULT_SNAPSHOT_SELECTION);
+if (defaultFiles.length === 0) {
   throw new Error(`No context files found in ${sourcePath}`);
 }
 
-const context = files
-  .map(({ root, rel }) => {
-    const text = readFileSync(path.join(root, rel), "utf8").replace(/\r\n/g, "\n");
-    return `===== FILE: ${rel} =====\n${text}`;
-  })
-  .join("\n\n");
+const context = renderContext(defaultFiles);
 
 const approxTokens = Math.ceil(context.length / 3.5);
 if (approxTokens > maxTokens) {
@@ -469,19 +568,6 @@ const moduleText = [
 
 writeFileSync(outPath, moduleText, "utf8");
 
-const snapshotHeader = [
-  "Weld & Arrow context snapshot",
-  `Source commit: ${commit}`,
-  `Built at: ${builtAt}`,
-  `Frozen snapshot of ${repoUrl}.`,
-  "",
-  "Files:",
-  ...files.map(({ rel }) => `- ${rel}`),
-  "",
-  "===== CONTEXT =====",
-  ""
-].join("\n");
-const snapshotText = `${snapshotHeader}${context}\n`;
 const contextDir = path.join(projectRoot, "public", "context");
 mkdirSync(contextDir, { recursive: true });
 
@@ -489,8 +575,23 @@ const snapshotPath = path.join(contextDir, "weld-and-arrow.txt");
 const expositionPath = path.join(contextDir, "exposition.md");
 const expositionHtmlPath = path.join(contextDir, "exposition.html");
 const manifestPath = path.join(contextDir, "manifest.json");
-const snapshotBytes = Buffer.byteLength(snapshotText, "utf8");
-writeFileSync(snapshotPath, snapshotText, "utf8");
+const snapshots = {};
+let defaultSnapshot = null;
+for (const selectedIds of allSnapshotSelections()) {
+  const selectedFiles = selectedSnapshotFiles(snapshotModules, selectedIds);
+  const text = buildSnapshotText({ commit, builtAt, repoUrl, files: selectedFiles, selectedIds });
+  const fileName = snapshotFileName(selectedIds);
+  const stats = snapshotStats(text);
+  writeFileSync(path.join(contextDir, fileName), text, "utf8");
+  snapshots[snapshotSlug(selectedIds)] = {
+    file: `/context/${fileName}`,
+    modules: selectedIds,
+    files: selectedFiles.map((entry) => entry.displayRel ?? entry.rel),
+    ...stats
+  };
+  if (selectedIds.join(",") === DEFAULT_SNAPSHOT_SELECTION.join(",")) defaultSnapshot = snapshots[snapshotSlug(selectedIds)];
+}
+const snapshotBytes = defaultSnapshot?.bytes ?? 0;
 const expositionText = expositionFiles
   .map((rel) => {
     const text = readGeneratedMarkdown(expositionRoot, rel);
@@ -501,7 +602,25 @@ writeFileSync(expositionPath, expositionText, "utf8");
 writeFileSync(expositionHtmlPath, `${renderMarkdownFiles(expositionRoot, expositionFiles)}\n`, "utf8");
 writeFileSync(
   manifestPath,
-  `${JSON.stringify({ commit, builtAt, bytes: snapshotBytes, approxTokens, repoUrl, expositionPaths: expositionFiles }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      commit,
+      builtAt,
+      bytes: snapshotBytes,
+      approxTokens: defaultSnapshot?.approxTokens ?? approxTokens,
+      repoUrl,
+      expositionPaths: expositionFiles,
+      snapshotModules: SNAPSHOT_MODULES.map(({ id, label }) => ({
+        id,
+        label,
+        files: (snapshotModules[id] ?? []).map((entry) => entry.displayRel ?? entry.rel)
+      })),
+      defaultSnapshotModules: DEFAULT_SNAPSHOT_SELECTION,
+      snapshots
+    },
+    null,
+    2
+  )}\n`,
   "utf8"
 );
 

@@ -1,4 +1,9 @@
 const snapshotMeta = document.querySelector("#snapshotMeta");
+const snapshotDownload = document.querySelector("#snapshotDownload");
+const snapshotPromptHint = document.querySelector("#snapshotPromptHint");
+const copySnapshotButton = document.querySelector("#copySnapshotButton");
+const copySnapshotStatus = document.querySelector("#copySnapshotStatus");
+const snapshotModuleInputs = Array.from(document.querySelectorAll('input[name="snapshot-module"]'));
 const repoLink = document.querySelector("#repoLink");
 const artifactLink = document.querySelector("#artifactLink");
 const expositionContent = document.querySelector("#expositionContent");
@@ -8,12 +13,16 @@ const copyRepoStatus = document.querySelector("#copyRepoStatus");
 const commitShort = document.querySelector("#commitShort");
 
 let resetCopyTimer = 0;
+let resetSnapshotCopyTimer = 0;
 let headingObserver = null;
+let snapshotManifest = null;
 
 init();
 
 async function init() {
   wireCopyButton();
+  wireSnapshotCopyButton();
+  wireSnapshotPicker();
   const results = await Promise.allSettled([loadManifest(), loadConfig(), loadExposition()]);
   for (const result of results) {
     if (result.status === "rejected") console.warn(result.reason);
@@ -26,9 +35,99 @@ async function loadManifest() {
 
   const manifest = await response.json();
   const commit = typeof manifest.commit === "string" ? manifest.commit : "";
-  const builtAt = formatDate(manifest.builtAt);
-  const bytes = formatBytes(manifest.bytes);
-  const tokens = formatTokens(manifest.approxTokens);
+  snapshotManifest = manifest;
+
+  applyDefaultSnapshotSelection(manifest);
+  updateSnapshotSelection();
+  if (commitShort && commit) commitShort.textContent = shortCommit(commit);
+
+  if (repoLink && typeof manifest.repoUrl === "string" && manifest.repoUrl.trim()) {
+    repoLink.href = manifest.repoUrl;
+    repoLink.textContent = manifest.repoUrl;
+  }
+}
+
+function wireSnapshotPicker() {
+  for (const input of snapshotModuleInputs) {
+    input.addEventListener("change", (event) => {
+      const target = event.currentTarget;
+      if (target instanceof HTMLInputElement && target.value === "code" && target.checked) {
+        setSnapshotModuleChecked("formalization", false);
+      }
+      updateSnapshotSelection();
+    });
+  }
+}
+
+function wireSnapshotCopyButton() {
+  if (!copySnapshotButton) return;
+  copySnapshotButton.addEventListener("click", copySelectedSnapshot);
+}
+
+async function copySelectedSnapshot() {
+  if (!copySnapshotButton || !snapshotDownload?.href) return;
+
+  const originalLabel = copySnapshotButton.dataset.label || copySnapshotButton.textContent || "Copy to clipboard";
+  copySnapshotButton.dataset.label = originalLabel;
+  copySnapshotButton.disabled = true;
+  copySnapshotButton.textContent = "Copying";
+  if (copySnapshotStatus) copySnapshotStatus.textContent = "";
+
+  try {
+    const response = await fetch(snapshotDownload.href, { cache: "no-store" });
+    if (!response.ok) throw new Error("Snapshot could not be loaded.");
+
+    await navigator.clipboard.writeText(await response.text());
+    showSnapshotCopyState("Copied", "Copied");
+  } catch (error) {
+    console.warn(error);
+    showSnapshotCopyState("Copy failed", "Copy failed");
+  }
+}
+
+function showSnapshotCopyState(buttonLabel, statusText) {
+  window.clearTimeout(resetSnapshotCopyTimer);
+  const originalLabel = copySnapshotButton.dataset.label || "Copy to clipboard";
+  copySnapshotButton.disabled = false;
+  copySnapshotButton.textContent = buttonLabel;
+  if (copySnapshotStatus) copySnapshotStatus.textContent = statusText;
+
+  resetSnapshotCopyTimer = window.setTimeout(() => {
+    copySnapshotButton.textContent = originalLabel;
+    if (copySnapshotStatus) copySnapshotStatus.textContent = "";
+  }, 2000);
+}
+
+function applyDefaultSnapshotSelection(manifest) {
+  if (!snapshotModuleInputs.length || !Array.isArray(manifest.defaultSnapshotModules)) return;
+
+  const defaults = new Set(manifest.defaultSnapshotModules);
+  for (const input of snapshotModuleInputs) input.checked = defaults.has(input.value);
+}
+
+function setSnapshotModuleChecked(value, checked) {
+  const input = snapshotModuleInputs.find((candidate) => candidate.value === value);
+  if (input) input.checked = checked;
+}
+
+function selectedSnapshotModules() {
+  return snapshotModuleInputs.filter((input) => input.checked).map((input) => input.value);
+}
+
+function snapshotKey(modules) {
+  return modules.length > 0 ? modules.join("-") : "empty";
+}
+
+function updateSnapshotSelection() {
+  if (!snapshotManifest) return;
+
+  const modules = selectedSnapshotModules();
+  updateSnapshotPromptHint(modules);
+  const snapshot = snapshotManifest.snapshots?.[snapshotKey(modules)];
+  const commit = typeof snapshotManifest.commit === "string" ? snapshotManifest.commit : "";
+  const builtAt = formatDate(snapshotManifest.builtAt);
+  const bytes = formatBytes(snapshot?.bytes);
+  const tokens = formatTokens(snapshot?.approxTokens);
 
   const details = [
     commit ? `commit ${commit}` : "",
@@ -37,13 +136,46 @@ async function loadManifest() {
     tokens
   ].filter(Boolean);
 
-  if (snapshotMeta && details.length > 0) snapshotMeta.textContent = details.join(" · ");
-  if (commitShort && commit) commitShort.textContent = shortCommit(commit);
-
-  if (repoLink && typeof manifest.repoUrl === "string" && manifest.repoUrl.trim()) {
-    repoLink.href = manifest.repoUrl;
-    repoLink.textContent = manifest.repoUrl;
+  if (snapshotMeta) {
+    snapshotMeta.textContent =
+      details.length > 0 ? details.join(" · ") : "snapshot size pending · token estimate pending";
   }
+
+  if (!snapshotDownload) return;
+  if (snapshot && typeof snapshot.file === "string" && snapshot.file) {
+    snapshotDownload.href = snapshot.file;
+    snapshotDownload.removeAttribute("aria-disabled");
+    snapshotDownload.classList.remove("disabled-action");
+  } else {
+    snapshotDownload.removeAttribute("href");
+    snapshotDownload.setAttribute("aria-disabled", "true");
+    snapshotDownload.classList.add("disabled-action");
+  }
+}
+
+function updateSnapshotPromptHint(modules) {
+  if (!snapshotPromptHint) return;
+
+  const topics = modules
+    .map((module) => {
+      if (module === "exposition") return "theory";
+      if (module === "code") return "code";
+      if (module === "glossary") return "glossary";
+      if (module === "formalization") return "formalization";
+      return "";
+    })
+    .filter(Boolean);
+
+  const topicList = formatPlainList(topics);
+  snapshotPromptHint.textContent = topicList
+    ? `Ask about the Weld & Arrow ${topicList}.`
+    : "Ask about Weld & Arrow.";
+}
+
+function formatPlainList(items) {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
 
 async function loadConfig() {
@@ -396,12 +528,10 @@ function formatDate(value) {
 
 function formatBytes(value) {
   if (!Number.isFinite(value) || value <= 0) return "";
-  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(value / 1024))} KB`;
+  return `${Math.round(value).toLocaleString()} bytes`;
 }
 
 function formatTokens(value) {
   if (!Number.isFinite(value) || value <= 0) return "";
-  if (value >= 1000) return `~${Math.round(value / 1000)}K tokens`;
   return `~${Math.round(value).toLocaleString()} tokens`;
 }

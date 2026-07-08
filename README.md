@@ -30,9 +30,9 @@ so they can use their own Claude account instead.
 The deploy workflow fetches the current Claude pricing table, installs Lean for
 the `WeldAndArrow` source checkout, generates the Exposition Markdown through
 the source repo's Lake executables, builds `src/context.generated.ts`, writes
-the public frozen context bundle, typechecks, and deploys with the source commit
-hash injected as `COMMIT_HASH`. Until `CLOUDFLARE_API_TOKEN` is configured, the
-workflow warns and skips only the final deploy step.
+the public frozen context bundles, typechecks, and deploys with the source
+commit hash injected as `COMMIT_HASH`. Until `CLOUDFLARE_API_TOKEN` is
+configured, the workflow warns and skips only the final deploy step.
 
 ## Source Repo Notification
 
@@ -83,23 +83,24 @@ node scripts/build-context.mjs --source ../weld-and-arrow --out src/context.gene
 pnpm run check
 ```
 
-`node scripts/build-context.mjs` runs `lake exe exposition_generation_test` in
-the source checkout first, then reads the generated Markdown from
-`.lake/exposition-test/Exposition`. `src/context.generated.ts` is intentionally
-ignored because every deploy freezes the current source checkout. The same build
-also writes
-`public/context/weld-and-arrow.txt`, `public/context/exposition.md`,
-`public/context/exposition.html`, and `public/context/manifest.json`; the
-directory is ignored because those files are generated from the source checkout.
+`node scripts/build-context.mjs` runs the source checkout's Exposition generator
+first, then reads the generated Markdown from `.lake/exposition-full/Exposition`.
+`src/context.generated.ts` is intentionally ignored because every deploy freezes
+the current source checkout. The same build also writes the default modular
+snapshot at `public/context/weld-and-arrow.txt`, all alternate module-selection
+snapshots, `public/context/exposition.md`, `public/context/exposition.html`,
+and `public/context/manifest.json`; the directory is ignored because those
+files are generated from the source checkout.
 
 ## Self-Serve Use
 
 `GET /` serves an unrecorded alternatives page. `GET /use-your-own` is kept as
 an alias for older links.
 
-- Download the snapshot at `/context/weld-and-arrow.txt` and drag it into a
-  Claude chat or Project. This keeps answers pinned to the exact frozen commit
-  used by the deployed site.
+- Choose snapshot modules on the home page and download the matching text file.
+  The default selection is Code plus Exposition; the page updates the byte count
+  and token estimate for the current selection. This keeps answers pinned to the
+  exact frozen commit used by the deployed site.
 - Read the rendered Exposition Markdown generated from the source repository on
   the home page.
 - Connect Claude's GitHub connector to the public source repository. This avoids
@@ -143,10 +144,11 @@ approximate time window.
   should return `503` with `error: "chat_disabled"`.
 - With default `CHAT_ENABLED=false`, the warm cron should skip cache warming.
 - Admin search/delete and daily retention purge should remove matching sessions.
-- After a local context build, `/context/weld-and-arrow.txt` should exist and
-  `public/context/exposition.html` should contain the rendered Exposition
-  Markdown. `public/context/manifest.json`'s `commit` should equal
-  `SOURCE_COMMIT` in `src/context.generated.ts`.
+- After a local context build, `/context/weld-and-arrow.txt` and the alternate
+  module-selection snapshots should exist, and `public/context/exposition.html`
+  should contain the rendered Exposition Markdown with Formalization last.
+  `public/context/manifest.json`'s `commit` should equal `SOURCE_COMMIT` in
+  `src/context.generated.ts`.
 
 When `CHAT_ENABLED=true`, the older hosted-chat checks apply: general Buddhism
 must return literal `Mu` after the Haiku gate; mixed prompts must answer only the
