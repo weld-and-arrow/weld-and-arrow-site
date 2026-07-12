@@ -219,13 +219,35 @@ function prepareExpositionReader() {
 }
 
 function wrapTables() {
-  for (const table of expositionContent.querySelectorAll("table")) {
+  const tables = Array.from(expositionContent.querySelectorAll("table"));
+
+  for (const [index, table] of tables.entries()) {
     if (table.parentElement?.classList.contains("markdown-table-scroll")) continue;
+
+    const hint = document.createElement("p");
+    hint.className = "markdown-table-hint";
+    hint.id = `markdown-table-hint-${index + 1}`;
+    hint.textContent = "Scroll horizontally to read all columns";
+    hint.hidden = true;
 
     const wrapper = document.createElement("div");
     wrapper.className = "markdown-table-scroll";
-    table.replaceWith(wrapper);
+    wrapper.setAttribute("role", "region");
+    wrapper.setAttribute("aria-label", `Scrollable table ${index + 1}`);
+    wrapper.setAttribute("aria-describedby", hint.id);
+    table.replaceWith(hint, wrapper);
     wrapper.append(table);
+
+    const updateOverflow = () => {
+      const overflows = wrapper.scrollWidth > wrapper.clientWidth + 1;
+      hint.hidden = !overflows;
+      wrapper.tabIndex = overflows ? 0 : -1;
+    };
+
+    requestAnimationFrame(updateOverflow);
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(updateOverflow).observe(wrapper);
+    }
   }
 }
 

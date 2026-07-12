@@ -384,9 +384,12 @@ pre,
 }
 
 .exposition-section {
+  width: min(90rem, calc(100vw - 40px));
   margin-top: clamp(46px, 7vw, 78px);
+  margin-inline: 50%;
   padding-top: 28px;
   border-top: 1px solid var(--line);
+  transform: translateX(-50%);
 }
 
 .exposition-heading {
@@ -726,6 +729,34 @@ pre,
   padding-right: 1px;
   overflow-x: auto;
   padding-bottom: 4px;
+  scrollbar-color: var(--temper-blue) #dfe5e8;
+  scrollbar-width: auto;
+}
+
+.markdown-table-scroll:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--temper-blue) 36%, transparent);
+  outline-offset: 3px;
+}
+
+.markdown-table-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px !important;
+  color: var(--temper-blue-strong);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.markdown-table-hint::after {
+  content: "\2192";
+  font-size: 1.05em;
+}
+
+.markdown-table-hint[hidden] {
+  display: none;
 }
 
 .markdown-table-scroll table {
@@ -1015,6 +1046,12 @@ textarea::placeholder {
   .exposition-reader {
     grid-template-columns: 1fr;
     gap: 18px;
+  }
+
+  .exposition-section {
+    width: auto;
+    margin-inline: 0;
+    transform: none;
   }
 
   .exposition-toc {
