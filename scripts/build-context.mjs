@@ -13,28 +13,18 @@ const EXPOSITION_READING_ORDER = [
   "Exposition/Identification.md",
   "Exposition/Assumptions.md",
   "Exposition/Glossary.md",
-  "Exposition/Formalization.md"
+  "Exposition/Reading.md"
 ];
 const SNAPSHOT_MODULES = [
   { id: "code", label: "Code" },
   { id: "exposition", label: "Exposition" },
   { id: "glossary", label: "Glossary" },
-  { id: "formalization", label: "Formalization" }
+  { id: "reading", label: "Reading" }
 ];
 const DEFAULT_SNAPSHOT_SELECTION = ["code", "exposition"];
 const CODE_DIRECTORY_ORDER = ["Signature", "Consequences", "Doctrines", "Identification", "Meta", "Gen"];
-const SNAPSHOT_EXPOSITION_ORDER = [
-  "Exposition/Theory.md",
-  "Exposition/Theorems.md",
-  "Exposition/Identification.md",
-  "Exposition/Assumptions.md"
-];
 const SNAPSHOT_GLOSSARY_ORDER = ["Exposition/Glossary.md"];
-const SNAPSHOT_FORMALIZATION_ORDER = ["Exposition/Formalization.md"];
-const GENERATED_EXPOSITION_ROOT = ".lake/exposition-full";
-const EXPOSITION_GENERATION_FULL = "exposition_generation_full";
-const EXPOSITION_GENERATOR = "exposition_gen";
-const ASSUMPTIONS_GENERATOR = "assumptions_gen";
+const SNAPSHOT_READING_ORDER = ["Exposition/Reading.md"];
 
 function usage() {
   console.error(
@@ -132,51 +122,6 @@ function moduleFileEntry(root, rel, displayRel = rel) {
   return { root, rel, displayRel };
 }
 
-function runLake(source, args, options = {}) {
-  try {
-    return execFileSync("lake", args, {
-      cwd: source,
-      encoding: options.encoding ?? "utf8",
-      stdio: options.stdio ?? ["ignore", "pipe", "inherit"]
-    });
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      throw new Error(
-        "`lake` was not found. Install Lean/Lake or run the build after leanprover/lean-action has set up the source checkout."
-      );
-    }
-    const command = `lake ${args.join(" ")}`;
-    throw new Error(`${command} failed while generating Exposition Markdown.`);
-  }
-}
-
-function generateExpositionMarkdown(source) {
-  const fullExpositionGenerator = path.join(source, "WeldAndArrow", "Gen", "FullExpositionGeneration.lean");
-  if (existsSync(fullExpositionGenerator)) {
-    runLake(source, ["exe", EXPOSITION_GENERATION_FULL], { stdio: ["ignore", "inherit", "inherit"] });
-    return path.join(source, GENERATED_EXPOSITION_ROOT);
-  }
-
-  const expositionGenerator = path.join(source, "WeldAndArrow", "Gen", "Exposition.lean");
-  if (existsSync(expositionGenerator)) {
-    runLake(source, ["exe", EXPOSITION_GENERATOR, "--output-dir", GENERATED_EXPOSITION_ROOT], {
-      stdio: ["ignore", "inherit", "inherit"]
-    });
-
-    const assumptionsGenerator = path.join(source, "WeldAndArrow", "Gen", "Assumptions.lean");
-    if (existsSync(assumptionsGenerator)) {
-      const expositionDir = path.join(source, GENERATED_EXPOSITION_ROOT, EXPOSITION_DIR);
-      mkdirSync(expositionDir, { recursive: true });
-      const assumptions = runLake(source, ["exe", ASSUMPTIONS_GENERATOR]);
-      writeFileSync(path.join(expositionDir, "Assumptions.md"), assumptions, "utf8");
-    }
-
-    return path.join(source, GENERATED_EXPOSITION_ROOT);
-  }
-
-  return source;
-}
-
 function collectExpositionFiles(root) {
   const files = [];
   const expositionRoot = path.join(root, EXPOSITION_DIR);
@@ -236,11 +181,14 @@ function collectMarkdownModuleFiles(expositionRoot, expositionFiles, orderedPath
 }
 
 function buildSnapshotModules(source, expositionRoot, expositionFiles) {
+  const excludedFromExposition = new Set([...SNAPSHOT_GLOSSARY_ORDER, ...SNAPSHOT_READING_ORDER]);
   return {
     code: collectCodeFiles(source),
-    exposition: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_EXPOSITION_ORDER),
+    exposition: expositionFiles
+      .filter((rel) => !excludedFromExposition.has(rel))
+      .map((rel) => moduleFileEntry(expositionRoot, rel)),
     glossary: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_GLOSSARY_ORDER),
-    formalization: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_FORMALIZATION_ORDER)
+    reading: collectMarkdownModuleFiles(expositionRoot, expositionFiles, SNAPSHOT_READING_ORDER)
   };
 }
 
@@ -333,6 +281,16 @@ function sanitizeLinkTarget(value) {
   return target;
 }
 
+function resolveMarkdownLink(value, currentRel) {
+  const target = sanitizeLinkTarget(value);
+  const match = target.match(/^([^?#]+\.md)(#[^?]+)?$/i);
+  if (!match || !currentRel) return target;
+
+  if (match[2]) return match[2];
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(currentRel), match[1]));
+  return `#markdown-${slugify(resolved)}`;
+}
+
 function slugify(value) {
   return (
     value
@@ -342,7 +300,7 @@ function slugify(value) {
   );
 }
 
-function renderInline(value) {
+function renderInline(value, currentRel) {
   return escapeHtml(value)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;[^&]*&quot;)?\)/g, (_match, alt, src) => {
@@ -350,7 +308,7 @@ function renderInline(value) {
       return `<img src="${safeSrc}" alt="${alt}">`;
     })
     .replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+&quot;[^&]*&quot;)?\)/g, (_match, text, href) => {
-      const safeHref = escapeAttribute(sanitizeLinkTarget(href));
+      const safeHref = escapeAttribute(resolveMarkdownLink(href, currentRel));
       return `<a href="${safeHref}" rel="noreferrer">${text}</a>`;
     })
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
@@ -398,7 +356,7 @@ function tableCells(line) {
     .map((cell) => cell.trim());
 }
 
-function renderTable(lines, start) {
+function renderTable(lines, start, currentRel) {
   const header = tableCells(lines[start]);
   let index = start + 2;
   const rows = [];
@@ -407,16 +365,18 @@ function renderTable(lines, start) {
     index += 1;
   }
 
-  const head = `<thead><tr>${header.map((cell) => `<th>${renderInline(cell)}</th>`).join("")}</tr></thead>`;
+  const head = `<thead><tr>${header.map((cell) => `<th>${renderInline(cell, currentRel)}</th>`).join("")}</tr></thead>`;
   const bodyRows = rows.map((row) => {
-    const cells = header.map((_cell, cellIndex) => `<td>${renderInline(row[cellIndex] ?? "")}</td>`).join("");
+    const cells = header
+      .map((_cell, cellIndex) => `<td>${renderInline(row[cellIndex] ?? "", currentRel)}</td>`)
+      .join("");
     return `<tr>${cells}</tr>`;
   });
   const body = bodyRows.length > 0 ? `<tbody>${bodyRows.join("")}</tbody>` : "";
   return { html: `<table>${head}${body}</table>`, next: index };
 }
 
-function renderMarkdown(markdown) {
+function renderMarkdown(markdown, currentRel) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const out = [];
   let index = 0;
@@ -447,7 +407,7 @@ function renderMarkdown(markdown) {
     const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
     if (heading) {
       const level = heading[1].length;
-      out.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
+      out.push(`<h${level}>${renderInline(heading[2], currentRel)}</h${level}>`);
       index += 1;
       continue;
     }
@@ -459,7 +419,7 @@ function renderMarkdown(markdown) {
     }
 
     if (isTableStart(lines, index)) {
-      const table = renderTable(lines, index);
+      const table = renderTable(lines, index, currentRel);
       out.push(table.html);
       index = table.next;
       continue;
@@ -471,7 +431,7 @@ function renderMarkdown(markdown) {
         quoted.push(lines[index].replace(/^\s{0,3}>\s?/, ""));
         index += 1;
       }
-      out.push(`<blockquote>${renderMarkdown(quoted.join("\n"))}</blockquote>`);
+      out.push(`<blockquote>${renderMarkdown(quoted.join("\n"), currentRel)}</blockquote>`);
       continue;
     }
 
@@ -484,7 +444,7 @@ function renderMarkdown(markdown) {
         index += 1;
       }
       const tag = ordered ? "ol" : "ul";
-      out.push(`<${tag}>${items.map((item) => `<li>${renderInline(item)}</li>`).join("")}</${tag}>`);
+      out.push(`<${tag}>${items.map((item) => `<li>${renderInline(item, currentRel)}</li>`).join("")}</${tag}>`);
       continue;
     }
 
@@ -494,7 +454,7 @@ function renderMarkdown(markdown) {
       index += 1;
     }
     if (paragraph.length > 0) {
-      out.push(`<p>${renderInline(paragraph.join(" "))}</p>`);
+      out.push(`<p>${renderInline(paragraph.join(" "), currentRel)}</p>`);
     }
   }
 
@@ -509,7 +469,7 @@ function renderMarkdownFiles(root, files) {
       return [
         `<section class="markdown-file" id="${id}">`,
         `<p class="markdown-file-path">${escapeHtml(rel)}</p>`,
-        renderMarkdown(text),
+        renderMarkdown(text, rel),
         "</section>"
       ].join("\n");
     })
@@ -532,7 +492,7 @@ if (!existsSync(sourcePath) || !statSync(sourcePath).isDirectory()) {
   throw new Error(`Source checkout does not exist or is not a directory: ${sourcePath}`);
 }
 
-const expositionRoot = generateExpositionMarkdown(sourcePath);
+const expositionRoot = sourcePath;
 const expositionFiles = collectExpositionFiles(expositionRoot);
 if (expositionFiles.length === 0) {
   throw new Error(`Exposition Markdown was not found under ${path.join(expositionRoot, EXPOSITION_DIR)}/`);

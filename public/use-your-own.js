@@ -52,7 +52,7 @@ function wireSnapshotPicker() {
     input.addEventListener("change", (event) => {
       const target = event.currentTarget;
       if (target instanceof HTMLInputElement && target.value === "code" && target.checked) {
-        setSnapshotModuleChecked("formalization", false);
+        setSnapshotModuleChecked("reading", false);
       }
       updateSnapshotSelection();
     });
@@ -161,7 +161,7 @@ function updateSnapshotPromptHint(modules) {
       if (module === "exposition") return "theory";
       if (module === "code") return "code";
       if (module === "glossary") return "glossary";
-      if (module === "formalization") return "formalization";
+      if (module === "reading") return "reading";
       return "";
     })
     .filter(Boolean);

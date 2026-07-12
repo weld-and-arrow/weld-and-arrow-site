@@ -47,13 +47,6 @@ jobs:
           ref: ${{ github.event.client_payload.sha || 'main' }}
           path: source
 
-      - name: Setup Lean for source
-        uses: leanprover/lean-action@v1
-        with:
-          lake-package-directory: source
-          build: false
-          test: false
-
       - name: Build frozen context
         run: |
           set -o pipefail
