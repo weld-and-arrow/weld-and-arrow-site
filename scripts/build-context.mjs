@@ -200,7 +200,7 @@ function compareExpositionFiles(a, b) {
 }
 
 function isExcludedCodePath(rel) {
-  return rel.startsWith("WeldAndArrow/Exposition/") || rel === "WeldAndArrow/Meta/Glossary.lean";
+  return rel.startsWith("WeldAndArrow/Exposition/");
 }
 
 function codeDirectoryRank(rel) {
