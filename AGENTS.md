@@ -27,7 +27,7 @@ def task_worktree_to_main():
     if approved:
         run("git status --short")
         run("git add <all changes>")
-        run('git commit -m "<task summary>\n\n<terse description of intent and approach>"') # the commit description should include whatever the change itself can't say - motivation, design decisions, etc. from the plan, as well as decisions at implementation time. Basically, any extra info the code itself couldn't state. Word-wrap text to Linux standard
+        run('git commit -m "<task summary>\n\n<terse description of intent and approach>"') # the commit description should include whatever the change itself can't say - motivation, design decisions, etc. from the plan, as well as decisions at implementation time. Basically, any extra info the code itself couldn't state.
     else:
         stop()
 
@@ -80,11 +80,16 @@ def task_worktree_to_main():
 
     run("git push") # Approval of merge-into-main is also automatically an approval for git push to origin iff the final git merge went cleanly, even when unrelated commits will be pushed too.
 
-    # Cleanup after main verifies cleanly.
+    # Cleanup after main verifies cleanly. The Codex process may keep the task
+    # worktree locked, so detach it before deleting the branch and make physical
+    # worktree removal best-effort.
+    run("git -C <task-worktree-path> status --short")  # stop if not clean
+    run("git -C <task-worktree-path> switch --detach <task-branch>")
     run("cd <main-worktree>")
-    run("git worktree remove <task-worktree-path>")
     run("git branch -d <task-branch>")
-    run("git worktree prune")
+    run("git branch --list <task-branch>")  # must print nothing
+    run_optional("git worktree remove <task-worktree-path>")
+    run_optional("git worktree prune")
 ```
 
 ## Semantic Sanity Check
@@ -110,13 +115,21 @@ conflict check:
 
 ## Notes
 
+- Do a `git pull` first
 - Use `git merge --ff-only <task-branch>` when merging into `main`; this keeps
   history linear and refuses to create a merge commit.
 - During rebase, conflict resolutions become part of the rebased commits.
 - If the rebase reveals additional semantic work beyond conflict resolution,
   make a separate post-rebase adaptation commit after user approval.
 - Do not remove a worktree while the shell is inside it.
-- Remove the task worktree before deleting its branch.
+- Before deleting a task branch, detach its worktree at the task branch's tip.
+  Delete and verify the branch before attempting to remove the worktree, because
+  the active Codex process may keep the worktree locked.
 - Use `git -c core.editor=true rebase --continue` so VS Code editor isn't atempted
+- Commit messages must contain real hard line breaks, not merely visual wrapping. Use a one-line subject no longer than 75 columns, followed by a blank line. Hard-wrap body paragraphs at 75 columns in the stored commit message. Do not supply the body as one long git commit -m argument. Verify the final message before committing.
 - If the user responds "k" or "K", that means they pre-grant approval for every subsequent step of the AGENTS.md workflow, unless unexpected information surfaces, in which case rescinded - pause activity to raise the new information.
-- Don't worry that the task worktree is still present at C:/Users/alicl/.codex/worktrees/ afterwards, it's locked by the process. If you reach that, don't acknowledge it, raise anything else that's genuinely important or print "DONE".
+- The task worktree may remain at C:/Users/alicl/.codex/worktrees/ while it is
+  locked by the Codex process. That is acceptable only after its task branch has
+  been detached, deleted, and verified absent. If so, don't acknowledge the
+  remaining worktree; raise anything else genuinely important or print "DONE".
+- You are permitted to git push to https://github.com/weld-and-arrow/weld-and-arrow and https://github.com/weld-and-arrow/weld-and-arrow-site
