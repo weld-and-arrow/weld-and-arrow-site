@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const DEFAULT_MAX_TOKENS = 600000;
 const EXPOSITION_DIR = "Exposition";
 const EXPOSITION_READING_ORDER = [
+  "Exposition/Preamble.md",
   "Exposition/index.md",
   "Exposition/Theory.md",
   "Exposition/Theorems.md",

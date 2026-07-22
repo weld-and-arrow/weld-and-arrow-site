@@ -275,6 +275,7 @@ function addHeadingAnchors(headings) {
 function buildToc(headings) {
   if (!expositionTocList) return;
   expositionTocList.textContent = "";
+  expositionTocList.append(renderTopTocNode());
 
   if (headings.length === 0) {
     const item = document.createElement("li");
@@ -288,6 +289,41 @@ function buildToc(headings) {
   for (const node of tree) expositionTocList.append(renderTocNode(node));
 
   setActiveToc(headings[0].id);
+}
+
+function renderTopTocNode() {
+  const item = document.createElement("li");
+  item.className = "toc-depth-1";
+
+  const row = document.createElement("div");
+  row.className = "toc-row";
+
+  const spacer = document.createElement("span");
+  spacer.className = "toc-toggle-spacer";
+  spacer.setAttribute("aria-hidden", "true");
+
+  const link = document.createElement("a");
+  link.href = "#";
+  link.dataset.targetId = "";
+  link.addEventListener("click", () => setActiveToc(""));
+
+  const arrow = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  arrow.setAttribute("class", "toc-arrow");
+  arrow.setAttribute("viewBox", "0 0 10 10");
+  arrow.setAttribute("aria-hidden", "true");
+
+  const arrowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  arrowPath.setAttribute("d", "M2 1 L8 5 L2 9 Z");
+  arrowPath.setAttribute("fill", "currentColor");
+  arrow.append(arrowPath);
+
+  const label = document.createElement("span");
+  label.textContent = "Top";
+
+  link.append(arrow, label);
+  row.append(spacer, link);
+  item.append(row);
+  return item;
 }
 
 function buildHeadingTree(headings) {
