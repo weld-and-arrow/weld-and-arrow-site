@@ -235,7 +235,7 @@ function allSnapshotSelections() {
 function snapshotHeader({ commit, builtAt, repoUrl, files, selectedIds }) {
   const selectedLabels = SNAPSHOT_MODULES.filter(({ id }) => selectedIds.includes(id)).map(({ label }) => label);
   return [
-    "Weld & Arrow context snapshot",
+    "Weld and Arrow context snapshot",
     `Source commit: ${commit}`,
     `Built at: ${builtAt}`,
     `Frozen snapshot of ${repoUrl}.`,

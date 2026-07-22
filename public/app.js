@@ -289,7 +289,7 @@ function renderHistory() {
   if (state.history.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.textContent = "Ask about the Weld & Arrow theory, paper, or Lean repository.";
+    empty.textContent = "Ask about the Weld and Arrow theory, paper, or Lean repository.";
     els.messages.append(empty);
     return;
   }
@@ -299,7 +299,7 @@ function renderHistory() {
     node.className = `message ${message.role}`;
     const label = document.createElement("div");
     label.className = "message-label";
-    label.textContent = message.role === "user" ? "You" : "Weld & Arrow";
+    label.textContent = message.role === "user" ? "You" : "Weld and Arrow";
     const body = document.createElement("div");
     body.className = "message-body";
     body.textContent = message.content || " ";
@@ -314,7 +314,7 @@ function renderNotice(text) {
   node.className = "message assistant notice";
   const label = document.createElement("div");
   label.className = "message-label";
-  label.textContent = "Weld & Arrow";
+  label.textContent = "Weld and Arrow";
   const body = document.createElement("div");
   body.className = "message-body";
   body.textContent = text;
@@ -328,7 +328,7 @@ function renderLimitNotice(reset, artifactUrl, selfServeUrl) {
   node.className = "message assistant notice";
   const label = document.createElement("div");
   label.className = "message-label";
-  label.textContent = "Weld & Arrow";
+  label.textContent = "Weld and Arrow";
   const body = document.createElement("div");
   body.className = "message-body";
   body.append("The spend limit resets at ", reset, ". Meanwhile, use the public artifact on your own Claude account: ");

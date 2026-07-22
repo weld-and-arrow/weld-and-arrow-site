@@ -168,8 +168,8 @@ function updateSnapshotPromptHint(modules) {
 
   const topicList = formatPlainList(topics);
   snapshotPromptHint.textContent = topicList
-    ? `Ask about the Weld & Arrow ${topicList}.`
-    : "Ask about Weld & Arrow.";
+    ? `Ask about the Weld and Arrow ${topicList}.`
+    : "Ask about Weld and Arrow.";
 }
 
 function formatPlainList(items) {

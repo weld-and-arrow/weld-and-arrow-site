@@ -1,4 +1,4 @@
-# Weld & Arrow Site
+# Weld and Arrow Site
 
 Cloudflare Worker + static self-serve UI for a repository-grounded WeldAndArrow guide.
 
