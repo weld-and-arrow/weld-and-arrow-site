@@ -333,6 +333,10 @@ function buildHeadingTree(headings) {
   for (const heading of headings) {
     const node = { heading, children: [] };
     const level = headingLevel(heading);
+    const file = heading.closest(".markdown-file");
+    const isFirstHeadingInFile = file?.querySelector("h1, h2, h3") === heading;
+
+    if (isFirstHeadingInFile) stack.length = 0;
 
     while (stack.length > 0 && stack[stack.length - 1].level >= level) stack.pop();
 
