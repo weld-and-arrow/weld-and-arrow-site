@@ -288,7 +288,7 @@ function buildToc(headings) {
   const tree = buildHeadingTree(headings);
   for (const node of tree) expositionTocList.append(renderTocNode(node));
 
-  setActiveToc(headings[0].id);
+  setActiveToc("");
 }
 
 function renderTopTocNode() {
@@ -436,6 +436,7 @@ function setupScrollSpy(headings) {
 
       const active = headings.filter((heading) => visible.has(heading.id)).pop();
       if (active) setActiveToc(active.id);
+      else if (headings[0].getBoundingClientRect().top > 0) setActiveToc("");
     },
     {
       rootMargin: "0px 0px -40% 0px",
